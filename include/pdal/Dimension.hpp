@@ -42,7 +42,7 @@
 
 #include <pdal/pdal_internal.hpp>
 
-//ABELL - Expect this to be generated from JSON soon.
+//This should be generated from another format - JSON?
 namespace pdal
 {
 namespace Dimension
@@ -56,6 +56,21 @@ enum Enum
     Unsigned = 0x200,
     Floating = 0x400
 };
+}
+
+inline std::string toName(BaseType::Enum b)
+{
+    switch (b)
+    {
+    case BaseType::Signed:
+        return "signed";
+    case BaseType::Unsigned:
+        return "unsigned";
+    case BaseType::Floating:
+        return "floating";
+    default:
+        return "";
+    }
 }
 
 namespace Type
@@ -100,6 +115,8 @@ struct Detail
         { return m_type; }
     size_t size() const
         { return Dimension::size(m_type); }
+    BaseType::Enum base() const
+        { return Dimension::base(m_type); }
 };
 
 namespace Id
@@ -454,7 +471,7 @@ inline Type::Enum defaultType(Id::Enum id)
     case Id::Z:
         return Double;
     case Id::Intensity:
-        return Unsigned8;
+        return Unsigned16;
     case Id::ReturnNumber:
         return Unsigned8;
     case Id::NumberOfReturns:

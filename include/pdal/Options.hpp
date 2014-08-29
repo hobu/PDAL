@@ -101,8 +101,13 @@ public:
             std::string const& description = "") :
         m_name(name), m_description(description)
     {
-        // FIXME: This shouldn't be able to throw -- hobu
-        setValue<T>(value);
+        try
+        {
+            setValue<T>(value);
+        }
+        catch (boost::bad_lexical_cast)
+        {
+        }
     }
 
     /// Construct from an existing boost::property_tree

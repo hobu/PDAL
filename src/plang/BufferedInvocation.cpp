@@ -59,15 +59,13 @@ BufferedInvocation::BufferedInvocation(const Script& script)
 
 void BufferedInvocation::begin(PointBuffer& buffer)
 {
-    PointContext ctx = buffer.context(); 
+    PointContext ctx = buffer.m_context;
     Dimension::IdList const& dims = ctx.dims();
     
     for (auto di = dims.begin(); di != dims.end(); ++di)
     {
         Dimension::Id::Enum d = *di;
         Dimension::Detail *dd = ctx.dimDetail(d);
-        //ABELL - does the interface allow us to use a fixed-size buffer
-        //  and then call beginChunk in a loop or something similar?
         void *data = malloc(dd->size() * buffer.size());
         m_buffers.push_back(data);  // Hold pointer for deallocation
         char *p = (char *)data;
@@ -96,7 +94,7 @@ void BufferedInvocation::end(PointBuffer& buffer)
 
     for (size_t i = 0; i < names.size(); i++)
     {
-        PointContext ctx = buffer.context();
+        PointContext ctx = buffer.m_context;
         Dimension::Id::Enum d = ctx.findDim(names[i]);
         if (d == Dimension::Id::Unknown)
             continue;

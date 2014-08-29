@@ -94,25 +94,20 @@ void PgReader::processOptions(const Options& options)
 
     // Read other preferences
     m_where = options.getValueOrDefault<std::string>("where", "");
+
+    // Spatial reference.
+    setSpatialReference(options.getValueOrDefault<SpatialReference>(
+        "spatialreference", SpatialReference()));
 }
 
 
-void PgReader::initialize()
+void PgReader::ready(PointContext ctx)
 {
     // Database connection
     m_session = pg_connect(m_connection);
 
-    // Allow spatialreference override if desired
-//ABELL - Move to processOptions()
-    try
-    {
-        setSpatialReference(getOptions().getValueOrThrow<pdal::SpatialReference>("spatialreference"));
-    }
-    catch (pdal::option_not_found const&)
-    {
-        // Read from pointcloud_formats otherwise
-        setSpatialReference(fetchSpatialReference());
-    }
+    if (getSpatialReference().empty())
+        setSpatialReference(fetchSpatialReference());    
 }
 
 
@@ -155,7 +150,7 @@ std::string PgReader::getDataQuery() const
     if (m_where.size())
         oss << " WHERE " << m_where;
 
-    log()->get(LogLevel::DEBUG) << "Constructed data query " <<
+    log()->get(LogLevel::Debug) << "Constructed data query " <<
         oss.str() << std::endl;
     return oss.str();
 }
@@ -174,7 +169,7 @@ uint32_t PgReader::fetchPcid() const
     if (m_pcid)
         return m_pcid;
 
-    log()->get(LogLevel::DEBUG) << "Fetching pcid ..." << std::endl;
+    log()->get(LogLevel::Debug) << "Fetching pcid ..." << std::endl;
 
     std::ostringstream oss;
     oss << "SELECT PC_Typmod_Pcid(a.atttypmod) AS pcid ";
@@ -206,7 +201,7 @@ uint32_t PgReader::fetchPcid() const
         throw pdal_error(oss.str());
     }
 
-    log()->get(LogLevel::DEBUG) << "     got pcid = " << pcid << std::endl;
+    log()->get(LogLevel::Debug) << "     got pcid = " << pcid << std::endl;
     m_pcid = pcid;
     return pcid;
 }
@@ -214,7 +209,7 @@ uint32_t PgReader::fetchPcid() const
 
 void PgReader::addDimensions(PointContext ctx)
 {
-    log()->get(LogLevel::DEBUG) << "Fetching schema object" << std::endl;
+    log()->get(LogLevel::Debug) << "Fetching schema object" << std::endl;
 
     uint32_t pcid = fetchPcid();
 
@@ -237,7 +232,7 @@ void PgReader::addDimensions(PointContext ctx)
 pdal::SpatialReference PgReader::fetchSpatialReference() const
 {
     // Fetch the WKT for the SRID to set the coordinate system of this stage
-    log()->get(LogLevel::DEBUG) << "Fetching SRID ..." << std::endl;
+    log()->get(LogLevel::Debug) << "Fetching SRID ..." << std::endl;
 
     uint32_t pcid = fetchPcid();
 
@@ -249,7 +244,7 @@ pdal::SpatialReference PgReader::fetchSpatialReference() const
         throw pdal_error("Unable to fetch srid for this table and column");
 
     int32_t srid = atoi(srid_str);
-    log()->get(LogLevel::DEBUG) << "     got SRID = " << srid << std::endl;
+    log()->get(LogLevel::Debug) << "     got SRID = " << srid << std::endl;
 
     oss.str("");
     oss << "EPSG:" << srid;

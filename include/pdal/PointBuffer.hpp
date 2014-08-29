@@ -35,7 +35,6 @@
 #pragma once
 
 #include <pdal/pdal_internal.hpp>
-#include <pdal/pdal_macros.hpp>
 #include <pdal/Bounds.hpp>
 #include <pdal/PointContext.hpp>
 
@@ -50,32 +49,17 @@ namespace plang
     class BufferedInvocation;
 }
 
+class PointBuffer;
+
+typedef std::shared_ptr<PointBuffer> PointBufferPtr;
+
 class PDAL_DLL PointBuffer
 {
     friend class plang::BufferedInvocation;
 public:
     PointBuffer();
-    PointBuffer(PointContext context) :
-        m_bounds(Bounds<double>::getDefaultSpatialExtent()), m_context(context)
+    PointBuffer(PointContext context) : m_context(context)
     {}
-
-    /** @name Attribute access
-    */
-    /*! @return the pdal::Bounds instance associated with this pdal::PointBuffer.
-        \verbatim embed:rst
-        .. note::
-
-            It is not a requirement that stages keep the pdal::Bounds instance
-            up-to-date when operating on the PointBuffer.
-        \endverbatim
-    */
-    const Bounds<double>& getSpatialBounds() const
-        { return m_bounds; }
-
-    /// sets the pdal::Bounds instance for this pdal::PointBuffer
-    /// @param bounds bounds instance to set.
-    void setSpatialBounds(const Bounds<double>& bounds)
-        { m_bounds = bounds; }
 
     point_count_t size() const
         { return m_index.size(); }
@@ -86,47 +70,13 @@ public:
         m_index.insert(m_index.end(), buf.m_index.begin(), buf.m_index.end());
     }
 
-    /// Get the buffer's point context.
-    PointContext context() const
-        { return m_context; }
+    /// Return a new point buffer with the same point context as this
+    /// point buffer.
+    PointBufferPtr makeNew() const
+        { return PointBufferPtr(new PointBuffer(m_context)); }
 
-    /** @name Point data access
-    */
-    /*! fetch the value T for a given :cpp:class:`pdal::Dimension` dim at
-        pointIndex `i`.
-        \param dim  The dimension to select
-        \param pointIndex the point index of the PointBuffer to select.
-        \verbatim embed:rst
-        .. warning::
-
-            If the data type of T is not the same as described in
-            :cpp:class:`pdal::Dimension`, the data value will be cast into
-            the appropriate type. In some situations this may not be what
-            you want. In situations where the T is smaller than the
-            datatype given by `dim`, the return value T will simply be
-            saturated.
-        \endverbatim
-    */
     template<class T>
-    T getField(Dimension::Id::Enum dim, PointId pointIndex) const;
-
-    /*! fetch the value T for a given :cpp:class:`pdal::Dimension` dim at
-        pointIndex `i`.
-        \param dim the dimension to select.
-        \param pointIndex the point index of the PointBuffer to select.
-        \param applyScaling whether or not to apply the dimension's scale and
-               offset prior to returning the value.
-        \verbatim embed:rst
-        .. note::
-
-            The method will attempt to cast :cpp:class:`pdal::Dimension` to
-            the requested data type T. If a bad cast is detected, pdal_error
-            is thrown.
-        \endverbatim
-    */
-    template<class T>
-    T getFieldAs(Dimension::Id::Enum dim, PointId pointIndex,
-        bool applyScaling = true) const;
+    T getFieldAs(Dimension::Id::Enum dim, PointId pointIndex) const;
 
     template<typename T>
     void setField(Dimension::Id::Enum dim, PointId idx, T val);
@@ -191,14 +141,6 @@ public:
         getFieldInternal(dim, idx, buf);
     }
 
-/**
-//ABELL
-    void setFieldUnscaled(Dimension::Id::Enum dim, PointId idx, double val)
-    {
-        setField(dim, idx, dim->removeScaling(val));
-    }
-**/
-
     /** @name Serialization
     */
     /*! returns a boost::property_tree containing the point records, which is
@@ -224,19 +166,22 @@ public:
         \verbatim embed:rst
         .. note::
 
-            This method requires that an `X`, `Y`, and `Z` dimension be 
-            available, and that it can be casted into a *double* data 
-            type using the :cpp:func:`pdal::Dimension::applyScaling` 
+            This method requires that an `X`, `Y`, and `Z` dimension be
+            available, and that it can be casted into a *double* data
+            type using the :cpp:func:`pdal::Dimension::applyScaling`
             method. Otherwise, an exception will be thrown.
         \endverbatim
-    */    
+    */
     pdal::Bounds<double> calculateBounds(bool bis3d=true) const;
     void dump(std::ostream& ostr) const;
     bool hasDim(Dimension::Id::Enum id) const
         { return m_context.hasDim(id); }
+    std::string dimName(Dimension::Id::Enum id) const
+        { return m_context.dimName(id); }
+    Dimension::IdList dims() const
+        { return m_context.dims(); }
 
 protected:
-    Bounds<double> m_bounds;
     PointContext m_context;
     std::vector<PointId> m_index;
 
@@ -246,13 +191,15 @@ private:
 
     inline void setFieldInternal(Dimension::Id::Enum dim, PointId pointIndex,
         const void *value);
+    template<class T>
+    T getFieldInternal(Dimension::Id::Enum dim, PointId pointIndex) const;
     inline void getFieldInternal(Dimension::Id::Enum dim, PointId pointIndex,
         void *value) const;
 };
 
 
 template <class T>
-T PointBuffer::getField(Dimension::Id::Enum dim, PointId id) const
+T PointBuffer::getFieldInternal(Dimension::Id::Enum dim, PointId id) const
 {
     T t;
 
@@ -261,10 +208,9 @@ T PointBuffer::getField(Dimension::Id::Enum dim, PointId id) const
 }
 
 
-//ABELL - Remove applyScaling
 template <class T>
 inline T PointBuffer::getFieldAs(Dimension::Id::Enum dim,
-    PointId pointIndex, bool applyScaling) const
+    PointId pointIndex) const
 {
     T retval;
     Dimension::Detail *dd = m_context.dimDetail(dim);
@@ -273,45 +219,40 @@ inline T PointBuffer::getFieldAs(Dimension::Id::Enum dim,
     switch (dd->type())
     {
     case Dimension::Type::Float:
-        val = getField<float>(dim, pointIndex);
+        val = getFieldInternal<float>(dim, pointIndex);
         break;
     case Dimension::Type::Double:
-        val = getField<double>(dim, pointIndex);
+        val = getFieldInternal<double>(dim, pointIndex);
         break;
     case Dimension::Type::Signed8:
-        val = getField<int8_t>(dim, pointIndex);
+        val = getFieldInternal<int8_t>(dim, pointIndex);
         break;
     case Dimension::Type::Signed16:
-        val = getField<int16_t>(dim, pointIndex);
+        val = getFieldInternal<int16_t>(dim, pointIndex);
         break;
     case Dimension::Type::Signed32:
-        val = getField<int32_t>(dim, pointIndex);
+        val = getFieldInternal<int32_t>(dim, pointIndex);
         break;
     case Dimension::Type::Signed64:
-        val = getField<int64_t>(dim, pointIndex);
+        val = getFieldInternal<int64_t>(dim, pointIndex);
         break;
     case Dimension::Type::Unsigned8:
-        val = getField<uint8_t>(dim, pointIndex);
+        val = getFieldInternal<uint8_t>(dim, pointIndex);
         break;
     case Dimension::Type::Unsigned16:
-        val = getField<uint16_t>(dim, pointIndex);
+        val = getFieldInternal<uint16_t>(dim, pointIndex);
         break;
     case Dimension::Type::Unsigned32:
-        val = getField<uint32_t>(dim, pointIndex);
+        val = getFieldInternal<uint32_t>(dim, pointIndex);
         break;
     case Dimension::Type::Unsigned64:
-        val = getField<uint64_t>(dim, pointIndex);
+        val = getFieldInternal<uint64_t>(dim, pointIndex);
         break;
     case Dimension::Type::None:
+    default:
         val = 0;
         break;
     }
-
-//ABELL
-/**
-    if (applyScaling)
-        val = dim->applyScaling(val);
-**/
 
     try
     {
@@ -334,7 +275,7 @@ inline T PointBuffer::getFieldAs(Dimension::Id::Enum dim,
 #ifdef PDAL_COMPILER_MSVC
 // warning C4127: conditional expression is constant
 #pragma warning(pop)
-#endif	
+#endif
 }
 
 
@@ -342,7 +283,7 @@ template<typename T_IN, typename T_OUT>
 void PointBuffer::convertAndSet(Dimension::Id::Enum dim, PointId idx, T_IN in)
 {
     T_OUT out;
-	
+
 #ifdef PDAL_COMPILER_MSVC
 // warning C4127: conditional expression is constant
 #pragma warning(push)
@@ -451,17 +392,12 @@ inline void PointBuffer::setFieldInternal(Dimension::Id::Enum dim,
 
 inline void PointBuffer::appendPoint(PointBuffer& buffer, PointId id)
 {
-    // FIXME: hobu -- what happens if id is out of range of m_index
-    // or m_index isn't ordered?
-    //ABELL - The programmer is saying take point "id" from "buffer" and stick
-    //  it in this buffer.  If "id" isn't valid, it's a programmer error.
+    // Invalid 'id' is a programmer error.
     PointId rawId = buffer.m_index[id];
     point_count_t newid = m_index.size();
     m_index.resize(newid + 1);
     m_index[newid] = rawId;
 }
-
-typedef std::shared_ptr<PointBuffer> PointBufferPtr;
 typedef std::set<PointBufferPtr> PointBufferSet;
 
 PDAL_DLL std::ostream& operator<<(std::ostream& ostr, const PointBuffer&);

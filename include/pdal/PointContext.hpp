@@ -38,6 +38,8 @@
 #include <memory>
 #include <vector>
 
+#include <boost/property_tree/json_parser.hpp>
+
 #include "pdal/Dimension.hpp"
 #include "pdal/Metadata.hpp"
 #include "pdal/RawPtBuf.hpp"
@@ -62,7 +64,7 @@ public:
     std::vector<Dimension::Detail> m_detail;
     Dimension::IdList m_used;
     std::map<std::string, Dimension::Id::Enum> m_propIds;
-    int m_nextFree = Dimension::PROPRIETARY;
+    int m_nextFree;
 };
 typedef std::shared_ptr<DimInfo> DimInfoPtr;
 
@@ -160,7 +162,7 @@ public:
             return id;
         }
         return assignDim(name, type);
-    } 
+    }
 
     Dimension::Id::Enum findDim(const std::string& name)
     {
@@ -189,6 +191,32 @@ public:
 
     const Dimension::IdList& dims() const
         { return m_dims->m_used; }
+
+    Dimension::Type::Enum dimType(Dimension::Id::Enum id) const
+    {
+        return hasDim(id) ? dimDetail(id)->type() : Dimension::Type::None;
+    }
+
+    std::string dimsJson() const
+    {
+        boost::property_tree::ptree tree;
+        boost::property_tree::ptree dimsTree;
+
+        for (const auto& id : dims())
+        {
+            boost::property_tree::ptree dim;
+            dim.put("name", Dimension::name(id));
+            dim.put("type", Dimension::toName(dimDetail(id)->base()));
+            dim.put("size", dimDetail(id)->size());
+            dimsTree.push_back(std::make_pair("", dim));
+        }
+
+        tree.add_child("dimensions", dimsTree);
+
+        std::ostringstream oss;
+        boost::property_tree::write_json(oss, tree);
+        return oss.str();
+    }
 
 private:
     Dimension::Detail *dimDetail(Dimension::Id::Enum id) const
@@ -233,7 +261,6 @@ private:
         if (base(t1) == base(t2))
             return std::max(t1, t2);
         //Prefer floating to non-floating.
-        //ABELL - Should we force double in some cases?
         if (base(t1) == Floating && base(t2) != Floating)
             return t1;
         if (base(t2) == Floating && base(t1) != Floating)

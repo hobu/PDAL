@@ -317,10 +317,13 @@ void Chipper::finalSplit(ChipRefList& wide, ChipRefList& narrow,
 void Chipper::emit(ChipRefList& wide, PointId widemin, PointId widemax,
     ChipRefList& narrow, PointId narrowmin, PointId narrowmax)
 {
-    PointBufferPtr buf(new PointBuffer(m_inbuf->context()));
+    PointBufferPtr buf = m_inbuf->makeNew();
     for (size_t idx = widemin; idx <= widemax; ++idx)
         buf->appendPoint(*m_inbuf, wide[idx].m_ptindex);
 
+    /**
+    // We currently don't write the bounds in the buffer.
+    //
     Bounds<double> bounds;
     if (wide.m_dir == DIR_X)
         bounds = Bounds<double>(wide[widemin].m_pos, narrow[narrowmin].m_pos,
@@ -328,7 +331,7 @@ void Chipper::emit(ChipRefList& wide, PointId widemin, PointId widemax,
     else
         bounds = Bounds<double>(narrow[narrowmin].m_pos, wide[widemin].m_pos,
             narrow[narrowmax].m_pos, wide[widemax].m_pos);
-    buf->setSpatialBounds(bounds);
+    **/
     m_buffers.insert(buf);
 }
 

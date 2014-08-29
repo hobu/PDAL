@@ -63,26 +63,28 @@ void PCLBlock::ready(PointContext ctx)
 
 PointBufferSet PCLBlock::run(PointBufferPtr input)
 {
-    PointBufferPtr output(new PointBuffer(input->context()));
+    PointBufferPtr output = input->makeNew();
     PointBufferSet pbSet;
     pbSet.insert(output);
 
 #ifdef PDAL_HAVE_PCL
-    bool logOutput = log()->getLevel() > LogLevel::DEBUG1;
+    bool logOutput = log()->getLevel() > LogLevel::Debug1;
     if (logOutput)
         log()->floatPrecision(8);
 
-    log()->get(LogLevel::DEBUG2) << input->getFieldAs<double>(Dimension::Id::X, 0) << ", " <<
+    log()->get(LogLevel::Debug2) << input->getFieldAs<double>(Dimension::Id::X, 0) << ", " <<
         input->getFieldAs<double>(Dimension::Id::Y, 0) << ", " <<
         input->getFieldAs<double>(Dimension::Id::Z, 0) << std::endl;
-    log()->get(LogLevel::DEBUG2) << "Process PCLBlock..." << std::endl;
+    log()->get(LogLevel::Debug2) << "Process PCLBlock..." << std::endl;
+
+    Bounds<double> const& buffer_bounds = input->calculateBounds();
 
     // convert PointBuffer to PointNormal
     typedef pcl::PointCloud<pcl::PointNormal> Cloud;
     Cloud::Ptr cloud(new Cloud);
-    PDALtoPCD(*input, *cloud);
+    PDALtoPCD(*input, *cloud, buffer_bounds);
 
-    log()->get(LogLevel::DEBUG2) << cloud->points[0].x << ", " <<
+    log()->get(LogLevel::Debug2) << cloud->points[0].x << ", " <<
         cloud->points[0].y << ", " << cloud->points[0].z << std::endl;
 
     int level = log()->getLevel();
@@ -111,9 +113,10 @@ PointBufferSet PCLBlock::run(PointBufferPtr input)
     pcl::Pipeline<pcl::PointNormal> pipeline;
     pipeline.setInputCloud(cloud);
     pipeline.setFilename(m_filename);
-    // FIXME: pcl::Pipieline might need to be updated now that
-    // PDAL is always doubles for XYZ dimensions
-//    pipeline.setOffsets(m_xDim->getNumericOffset(), m_yDim->getNumericOffset(), m_zDim->getNumericOffset());
+    // PDALtoPCD subtracts min values in each XYZ dimension to prevent rounding
+    // errors in conversion to float. These offsets need to be conveyed to the
+    // pipeline to offset any bounds entered as part of a PassThrough filter.
+    pipeline.setOffsets(buffer_bounds.getMinimum(0), buffer_bounds.getMinimum(1), buffer_bounds.getMinimum(2));
 
     // create PointCloud for results
     Cloud::Ptr cloud_f(new Cloud);
@@ -121,16 +124,16 @@ PointBufferSet PCLBlock::run(PointBufferPtr input)
 
     if (cloud_f->points.empty())
     {
-        log()->get(LogLevel::DEBUG2) << "Filtered cloud has no points!" << std::endl;
+        log()->get(LogLevel::Debug2) << "Filtered cloud has no points!" << std::endl;
         return pbSet;
     }
 
-    PCDtoPDAL(*cloud_f, *output);
+    PCDtoPDAL(*cloud_f, *output, buffer_bounds);
 
-    log()->get(LogLevel::DEBUG2) << cloud->points.size() << " before, " <<
+    log()->get(LogLevel::Debug2) << cloud->points.size() << " before, " <<
         cloud_f->points.size() << " after" << std::endl;
-    log()->get(LogLevel::DEBUG2) << output->size() << std::endl;
-    log()->get(LogLevel::DEBUG2) << output->getFieldAs<double>(Dimension::Id::X, 0) << ", " <<
+    log()->get(LogLevel::Debug2) << output->size() << std::endl;
+    log()->get(LogLevel::Debug2) << output->getFieldAs<double>(Dimension::Id::X, 0) << ", " <<
         output->getFieldAs<double>(Dimension::Id::Y, 0) << ", " << 
         output->getFieldAs<double>(Dimension::Id::Z, 0) << std::endl;
 #endif

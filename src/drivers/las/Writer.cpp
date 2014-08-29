@@ -56,6 +56,11 @@ namespace drivers
 namespace las
 {
 
+namespace
+{
+    const uint8_t MAX_RETURN_NUMBER = 5;
+}
+
 
 Writer::Writer(const Options& options)
     : pdal::Writer(options)
@@ -90,41 +95,40 @@ void Writer::Construct()
 
 void Writer::processOptions(const Options& options)
 {
-    //ABELL
-    // Rework to set options here.
+    setGeneratingSoftware(options.getValueOrDefault("software_id",
+        GetDefaultSoftwareId()));
+
+    m_lasHeader.SetCreationDOY((uint16_t)options.getValueOrDefault(
+        "creation_doy", 0U));
+    m_lasHeader.SetCreationYear((uint16_t)options.getValueOrDefault(
+        "creation_year", 0U));
+    m_lasHeader.setPointFormat(static_cast<PointFormat>(
+        options.getValueOrDefault("format", 3U)));
+    m_lasHeader.SetSystemId(options.getValueOrDefault<std::string>("system_id",
+        LasHeader::SystemIdentifier));
+
+    m_lasHeader.SetHeaderPadding(options.getValueOrDefault(
+        "header_padding", 0U));
+    if (options.hasOption("a_srs"))
+        setSpatialReference(options.getValueOrDefault("a_srs", std::string()));
+    m_lasHeader.SetCompressed(options.getValueOrDefault("compression", false));
+    m_lasHeader.SetFileSourceId(options.getValueOrDefault<uint16_t>(
+        "filesource_id", 0));
+    try
+    {
+        m_lasHeader.SetDataRecordLength(options.getValueOrThrow<uint16_t>(
+            "datarecordlength"));
+    }
+    catch (pdal::option_not_found&) {};
+    
+    m_discardHighReturnNumbers = options.getValueOrDefault(
+            "discard_high_return_numbers", false);
 }
 
 
 void Writer::setOptions()
 {
-    setGeneratingSoftware(getOptions().getValueOrDefault<std::string>(
-        "software_id", pdal::drivers::las::GetDefaultSoftwareId()));
 
-    m_lasHeader.SetCreationDOY((uint16_t)getOptions().
-        getValueOrDefault<uint32_t>("creation_doy", 0));
-    m_lasHeader.SetCreationYear((uint16_t)getOptions().
-        getValueOrDefault<uint32_t>("creation_year", 0));
-    m_lasHeader.setPointFormat(static_cast<PointFormat>(getOptions().
-        getValueOrDefault<uint32_t>("format", 3)));
-    m_lasHeader.SetSystemId(getOptions().getValueOrDefault<std::string>(
-        "system_id", LasHeader::SystemIdentifier));
-
-    m_lasHeader.SetHeaderPadding(getOptions().
-        getValueOrDefault<uint32_t>("header_padding", 0));
-    if (getOptions().hasOption("a_srs"))
-        setSpatialReference(getOptions().getValueOrDefault<std::string>(
-            "a_srs",""));
-    m_lasHeader.SetCompressed(getOptions().getValueOrDefault(
-        "compression", false));
-    m_lasHeader.SetFileSourceId(getOptions().getValueOrDefault<boost::uint16_t>(
-        "filesource_id", 0));
-    try
-    {
-        boost::uint16_t record_length =
-            getOptions().getValueOrThrow<boost::uint16_t>("datarecordlength");
-        m_lasHeader.SetDataRecordLength(record_length);
-    }
-    catch (pdal::option_not_found&) {};
 }
 
 
@@ -296,7 +300,7 @@ void Writer::setVLRsFromMetadata(LasHeader& header, MetadataNode metaNode,
                     &data[0],
                     static_cast<boost::uint16_t>(data.size()));
             header.getVLRs().add(vlr);
-            log()->get(LogLevel::DEBUG) << "Setting VLR from metadata with "
+            log()->get(LogLevel::Debug) << "Setting VLR from metadata with "
                 "user_id='" << user_id << "' and record_id='" << record_id <<
                 "'"<< " with size: " << data.size() << std::endl;
         }
@@ -310,18 +314,10 @@ void Writer::ready(PointContext ctx)
         return;
 
     m_streamOffset = m_streamManager.ostream().tellp();
-// m_lasHeader.setBounds(getPrevStage().getBounds());
 
-//ABELL
-//Need a way to determine an appropriate scale/offset.
-/**
-    m_lasHeader.SetScale(m_dims->X->getNumericScale(),
-                         m_dims->Y->getNumericScale(),
-                         m_dims->Z->getNumericScale());
-    m_lasHeader.SetOffset(m_dims->X->getNumericOffset(),
-                          m_dims->Y->getNumericOffset(),
-                          m_dims->Z->getNumericOffset());
-**/
+    m_lasHeader.SetScale(m_xXform.m_scale, m_yXform.m_scale, m_zXform.m_scale);
+    m_lasHeader.SetOffset(m_xXform.m_offset, m_yXform.m_offset,
+        m_zXform.m_offset);
 
     m_lasHeader.setSpatialReference(getSpatialReference().empty() ?
         ctx.spatialRef() : getSpatialReference());
@@ -348,14 +344,14 @@ void Writer::ready(PointContext ctx)
         // metadata one that was set passively
         v = v2; 
         setPointFormat(static_cast<PointFormat>(v));
-        log()->get(LogLevel::DEBUG) << "Setting point format to " << v <<
+        log()->get(LogLevel::Debug) << "Setting point format to " << v <<
             " from metadata " << std::endl;
         
         uint32_t minor = getMetadataOption<uint32_t>(getOptions(),
             m_metadata, "minor_version", 2);
 
         setFormatVersion(1, static_cast<boost::uint8_t>(minor));
-        log()->get(LogLevel::DEBUG) << "Setting version to "
+        log()->get(LogLevel::Debug) << "Setting version to "
                              << "1." << minor
                              << " from metadata " << std::endl;
 
@@ -376,26 +372,26 @@ void Writer::ready(PointContext ctx)
             "creation_doy", day);
 
         setDate(static_cast<uint16_t>(day), static_cast<uint16_t>(year));
-        log()->get(LogLevel::DEBUG) << "Setting date to format " << day <<
+        log()->get(LogLevel::Debug) << "Setting date to format " << day <<
             "/" << year << " from metadata " << std::endl;
 
         std::string software_id = getMetadataOption<std::string>(getOptions(),
             m_metadata, "software_id", GetDefaultSoftwareId());
         setGeneratingSoftware(software_id);
-        log()->get(LogLevel::DEBUG) << "Setting generating software to '" <<
+        log()->get(LogLevel::Debug) << "Setting generating software to '" <<
             software_id << "' from metadata " << std::endl;
 
         std::string system_id = getMetadataOption<std::string>(getOptions(),
             m_metadata, "system_id", LasHeader::SystemIdentifier);
         setSystemIdentifier(system_id);
-        log()->get(LogLevel::DEBUG) << "Setting system identifier to " <<
+        log()->get(LogLevel::Debug) << "Setting system identifier to " <<
             system_id << " from metadata " << std::endl;
 
         boost::uuids::uuid project_id =
             getMetadataOption<boost::uuids::uuid>(getOptions(),
             m_metadata, "project_id", boost::uuids::nil_uuid());
         m_lasHeader.SetProjectId(project_id);
-        log()->get(LogLevel::DEBUG) << "Setting project_id to " << project_id <<
+        log()->get(LogLevel::Debug) << "Setting project_id to " << project_id <<
             " from metadata " << std::endl;
         
         std::string global_encoding_data = getMetadataOption<std::string>(
@@ -413,14 +409,12 @@ void Writer::ready(PointContext ctx)
                 memcpy(&reserved, data.data(), data.size());
             else if (data.size() == 4 )
             {
-                //ABELL - HUH?
                 uint32_t temp;
                 memcpy(&temp, data.data(), data.size());
                 reserved = static_cast<uint16_t>(temp);
             }
             else if (data.size() == 8 )
             {
-                //ABELL - HUH? AGAIN...
                 uint64_t temp;
                 memcpy(&temp, data.data(), data.size());
                 reserved = static_cast<uint16_t>(temp);
@@ -434,13 +428,13 @@ void Writer::ready(PointContext ctx)
             }
         }
         m_lasHeader.SetReserved(reserved);
-        log()->get(LogLevel::DEBUG) << "Setting reserved to " << reserved <<
+        log()->get(LogLevel::Debug) << "Setting reserved to " << reserved <<
             " from metadata " << std::endl;
 
         uint16_t filesource_id = getMetadataOption<uint16_t>(getOptions(),
             m_metadata, "filesource_id", 0);
         m_lasHeader.SetFileSourceId(filesource_id);
-        log()->get(LogLevel::DEBUG) << "Setting file source id to " <<
+        log()->get(LogLevel::Debug) << "Setting file source id to " <<
             filesource_id << " from metadata " << std::endl;
 
         try
@@ -514,40 +508,52 @@ void Writer::write(const PointBuffer& pointBuffer)
 
         // we always write the base fields
         using namespace Dimension;
-        //ABELL - May need to unscale.
-        int32_t x = pointBuffer.getFieldAs<int32_t>(Id::X, idx, false);
-        int32_t y = pointBuffer.getFieldAs<int32_t>(Id::Y, idx, false);
-        int32_t z = pointBuffer.getFieldAs<int32_t>(Id::Z, idx, false);
 
-        Utils::write_field(p, x);
-        Utils::write_field(p, y);
-        Utils::write_field(p, z);
+        uint8_t returnNumber(0);
+        uint8_t numberOfReturns(0);
+        if (pointBuffer.hasDim(Id::ReturnNumber))
+            returnNumber = pointBuffer.getFieldAs<uint8_t>(Id::ReturnNumber,
+                idx);
+        if (pointBuffer.hasDim(Id::NumberOfReturns))
+            numberOfReturns = pointBuffer.getFieldAs<uint8_t>(
+                Id::NumberOfReturns, idx);
+        if (m_discardHighReturnNumbers && numberOfReturns > MAX_RETURN_NUMBER)
+        {
+            if (returnNumber > MAX_RETURN_NUMBER)
+            {
+                if (idx % 100 == 0)
+                    m_callback->invoke(idx + 1);
+                continue;
+            }
+            numberOfReturns = MAX_RETURN_NUMBER;
+        }
+
+        double x = pointBuffer.getFieldAs<double>(Id::X, idx);
+        double y = pointBuffer.getFieldAs<double>(Id::Y, idx);
+        double z = pointBuffer.getFieldAs<double>(Id::Z, idx);
+
+        x = (x - m_xXform.m_offset) / m_xXform.m_scale;
+        y = (y - m_yXform.m_offset) / m_yXform.m_scale;
+        z = (z - m_zXform.m_offset) / m_zXform.m_scale;
+
+        Utils::write_field(p, boost::numeric_cast<int32_t>(lround(x)));
+        Utils::write_field(p, boost::numeric_cast<int32_t>(lround(y)));
+        Utils::write_field(p, boost::numeric_cast<int32_t>(lround(z)));
 
         uint16_t intensity = 0;
         if (pointBuffer.hasDim(Id::Intensity))
-            intensity = pointBuffer.getFieldAs<uint16_t>(Id::Intensity,
-                idx, false);
+            intensity = pointBuffer.getFieldAs<uint16_t>(Id::Intensity, idx);
         Utils::write_field(p, intensity);
-
-        uint8_t returnNumber(0);
-        if (pointBuffer.hasDim(Id::ReturnNumber))
-            returnNumber = pointBuffer.getFieldAs<uint8_t>(Id::ReturnNumber,
-                idx, false);
-
-        uint8_t numberOfReturns(0);
-        if (pointBuffer.hasDim(Id::NumberOfReturns))
-            numberOfReturns = pointBuffer.getFieldAs<uint8_t>(
-                Id::NumberOfReturns, idx, false);
 
         uint8_t scanDirectionFlag(0);
         if (pointBuffer.hasDim(Id::ScanDirectionFlag))
             scanDirectionFlag = pointBuffer.getFieldAs<uint8_t>(
-                Id::ScanDirectionFlag, idx, false);
+                Id::ScanDirectionFlag, idx);
 
         uint8_t edgeOfFlightLine(0);
         if (pointBuffer.hasDim(Id::EdgeOfFlightLine))
             edgeOfFlightLine = pointBuffer.getFieldAs<uint8_t>(
-                Id::EdgeOfFlightLine, idx, false);
+                Id::EdgeOfFlightLine, idx);
 
         boost::uint8_t bits = returnNumber | (numberOfReturns<<3) |
             (scanDirectionFlag << 6) | (edgeOfFlightLine << 7);
@@ -556,32 +562,31 @@ void Writer::write(const PointBuffer& pointBuffer)
         uint8_t classification = 0;
         if (pointBuffer.hasDim(Id::Classification))
             classification = pointBuffer.getFieldAs<uint8_t>(Id::Classification,
-                idx, false);
+                idx);
         Utils::write_field(p, classification);
 
         int8_t scanAngleRank = 0;
         if (pointBuffer.hasDim(Id::ScanAngleRank))
             scanAngleRank = pointBuffer.getFieldAs<int8_t>(Id::ScanAngleRank,
-                idx, false);
+                idx);
         Utils::write_field(p, scanAngleRank);
 
         uint8_t userData = 0;
         if (pointBuffer.hasDim(Id::UserData))
-            userData = pointBuffer.getFieldAs<uint8_t>(Id::UserData,
-                idx, false);
+            userData = pointBuffer.getFieldAs<uint8_t>(Id::UserData, idx);
         Utils::write_field(p, userData);
 
         uint16_t pointSourceId = 0;
         if (pointBuffer.hasDim(Id::PointSourceId))
             pointSourceId = pointBuffer.getFieldAs<uint16_t>(Id::PointSourceId,
-                idx, false);
+                idx);
         Utils::write_field(p, pointSourceId);
 
         if (hasTime)
         {
             double t = 0.0;
             if (pointBuffer.hasDim(Id::GpsTime))
-                t = pointBuffer.getFieldAs<double>(Id::GpsTime, idx, false);
+                t = pointBuffer.getFieldAs<double>(Id::GpsTime, idx);
             Utils::write_field(p, t);
         }
 
@@ -591,11 +596,11 @@ void Writer::write(const PointBuffer& pointBuffer)
             uint16_t green = 0;
             uint16_t blue = 0;
             if (pointBuffer.hasDim(Id::Red))
-                red = pointBuffer.getFieldAs<uint16_t>(Id::Red, idx, false);
+                red = pointBuffer.getFieldAs<uint16_t>(Id::Red, idx);
             if (pointBuffer.hasDim(Id::Green))
-                green = pointBuffer.getFieldAs<uint16_t>(Id::Green, idx, false);
+                green = pointBuffer.getFieldAs<uint16_t>(Id::Green, idx);
             if (pointBuffer.hasDim(Id::Blue))
-                blue = pointBuffer.getFieldAs<uint16_t>(Id::Blue, idx, false);
+                blue = pointBuffer.getFieldAs<uint16_t>(Id::Blue, idx);
 
             Utils::write_field(p, red);
             Utils::write_field(p, green);
@@ -647,7 +652,7 @@ void Writer::done(PointContext ctx)
 {
     m_lasHeader.SetPointRecordsCount(m_numPointsWritten);
 
-    log()->get(LogLevel::DEBUG) << "Wrote " << m_numPointsWritten <<
+    log()->get(LogLevel::Debug) << "Wrote " << m_numPointsWritten <<
         " points to the LAS file" << std::endl;
 
     m_streamManager.ostream().seekp(m_streamOffset);

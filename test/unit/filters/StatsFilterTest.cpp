@@ -252,8 +252,7 @@ BOOST_AUTO_TEST_CASE(test_pointbuffer_stats)
     filter.execute(ctx);
 
     MetadataNode m = ctx.metadata();
-    m = m.findChild(
-        "filters.stats:Classification:counts:count-1:count");
+    m = m.findChild("filters.stats:statistic:counts:count-1:count");
     BOOST_CHECK_EQUAL(m.value(), "737");
 }
 #endif

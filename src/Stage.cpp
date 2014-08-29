@@ -121,15 +121,13 @@ void Stage::l_initialize(PointContext ctx)
 {
     m_metadata = ctx.metadata().add(getName());
     if (m_inputs.size()) {
-        Stage& prevStage = getPrevStage();
+        Stage& prevStage = *m_inputs[0];
     }
 }
 
 
 void Stage::l_processOptions(const Options& options)
 {
-    m_debug = options.getValueOrDefault<bool>("debug", false);
-    m_verbose = options.getValueOrDefault<boost::uint32_t>("verbose", 0);
     if (m_debug && !m_verbose)
         m_verbose = 1;
 
@@ -148,7 +146,8 @@ void Stage::l_processOptions(const Options& options)
         }
         else
         {
-            std::ostream* v = getPrevStage().log()->getLogStream();
+            // We know we're not empty at this point
+            std::ostream* v = m_inputs[0]->log()->getLogStream();
             m_log.reset(new Log(getName(), v));
         }
     }
@@ -165,6 +164,9 @@ void Stage::l_processOptions(const Options& options)
         // If one wasn't set on the options, we'll ignore at this
         // point.  Maybe another stage might forward/set it later.
     }
+
+    // Process writer-specific options.
+    writerProcessOptions(options);
 }
 
 
@@ -173,21 +175,6 @@ void Stage::l_done(PointContext ctx)
     if (!m_spatialReference.empty())
         ctx.setSpatialRef(m_spatialReference);
 }
-
-
-Stage& Stage::getPrevStage() const
-{
-    if (m_inputs.empty())
-        throw internal_error("Stage does not have any previous stages");
-    return *m_inputs[0];
-}
-
-
-std::vector<Stage*> Stage::getPrevStages() const
-{
-    return m_inputs;
-}
-
 
 const SpatialReference& Stage::getSpatialReference() const
 {
@@ -210,6 +197,28 @@ void Stage::setSpatialReference(MetadataNode& m,
     MetadataNode spatialNode = m.findChild(pred);
     if (spatialNode.empty())
         m.add("spatialreference", spatialRef, "SRS of this stage");
+}
+
+std::vector<Stage*> Stage::findStage(std::string name)
+{
+    std::vector<Stage*> output;
+    if (boost::iequals(getName(), name))
+        output.push_back(this);
+    
+    for (auto s = m_inputs.begin(); s != m_inputs.end(); ++s)
+    {
+        Stage* stage = (*s);
+        if (boost::iequals(stage->getName(), name))
+            output.push_back(stage);
+        if (stage->getInputs().size())
+        {
+            auto hits = stage->findStage(name);
+            if (hits.size())
+                output.insert(output.end(), hits.begin(), hits.end());
+        }
+    }
+    
+    return output;
 }
 
 std::ostream& operator<<(std::ostream& ostr, const Stage& stage)

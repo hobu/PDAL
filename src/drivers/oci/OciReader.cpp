@@ -188,7 +188,7 @@ void OciReader::validateQuery()
     while (m_stmt->GetNextField(col, fieldName, &hType, &size,
         &precision, &scale, typeName))
     {
-        log()->get(LogLevel::DEBUG) << "Fetched field '" << fieldName <<
+        log()->get(LogLevel::Debug) << "Fetched field '" << fieldName <<
             "' of type '" << typeName << "'"<< std::endl;
 
         reqFields.erase(fieldName);
@@ -245,24 +245,23 @@ pdal::SpatialReference OciReader::fetchSpatialReference(Statement stmt,
 
 void OciReader::addDimensions(PointContext ctx)
 {
-    log()->get(LogLevel::DEBUG) << "Fetching schema from SDO_PC object" <<
+    log()->get(LogLevel::Debug) << "Fetching schema from SDO_PC object" <<
         std::endl;
 
     m_block->m_ctx = ctx;
     m_block->m_schema = fetchSchema(m_stmt, m_block);
-//ABELL - Deal with this later.
-/**
+    schema::DimInfoList& dims = m_block->m_schema.m_dims;
+    for (auto di = dims.begin(); di != dims.end(); ++di)
+        di->m_id = ctx.registerOrAssignDim(di->m_name, di->m_type);
     if (m_schemaFile.size())
     {
-        std::string pcSchema = Schema::to_xml(storedSchema);
+        schema::Writer writer(m_block->m_schema.dims(),
+            m_block->m_schema.types());
+        std::string pcSchema = writer.getXML();
         std::ostream* out = FileUtils::createFile(m_schemaFile);
         out->write(pcSchema.c_str(), pcSchema.size());
         FileUtils::closeFile(out);
     }
-**/
-    schema::DimInfoList& dims = m_block->m_schema.m_dims;
-    for (auto di = dims.begin(); di != dims.end(); ++di)
-        di->m_id = ctx.registerOrAssignDim(di->m_name, di->m_type);
 }
 
 

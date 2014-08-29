@@ -25,9 +25,16 @@ cmake_policy(SET CMP0022 OLD) # interface link libraries
 cmake_policy(SET CMP0042 OLD) # osx rpath
 endif()
 
-if (CMAKE_SYSTEM_NAME MATCHES "Linux")
-set(CMAKE_SKIP_RPATH ON)
-endif()
+# per http://www.cmake.org/Wiki/CMake_RPATH_handling
+SET(CMAKE_SKIP_BUILD_RPATH FALSE)
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+LIST(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/lib" isSystemDir)
+IF("${isSystemDir}" STREQUAL "-1")
+    SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+ENDIF("${isSystemDir}" STREQUAL "-1")
+
 
 # Provided modules
 include(CMakeDependentOption)
@@ -109,6 +116,7 @@ option(ENABLE_CTEST "Enable CTest to support submissions of results to CDash at 
 #------------------------------------------------------------------------------
 
 if(WIN32)
+  add_definitions(-DWIN32_LEAN_AND_MEAN)
   if(MSVC)
     option(PDAL_USE_STATIC_RUNTIME "Use the static runtime" FALSE)
 
@@ -247,7 +255,7 @@ if(WIN32)
 endif(WIN32)
 
 if (NOT PDAL_EMBED_BOOST)
-  find_package(Boost 1.52 COMPONENTS program_options thread iostreams filesystem system unit_test_framework random)
+  find_package(Boost 1.55 COMPONENTS program_options thread iostreams filesystem system unit_test_framework random)
 endif()
 
 if(Boost_FOUND)

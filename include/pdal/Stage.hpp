@@ -82,6 +82,8 @@ public:
     const SpatialReference& getSpatialReference() const;
     const Options& getOptions() const
         { return m_options; }
+    void setOptions(Options options)
+        { m_options = options; }
     virtual boost::property_tree::ptree serializePipeline() const = 0;
     virtual LogPtr log() const
         { return m_log; }
@@ -95,8 +97,7 @@ public:
     virtual std::string getDescription() const = 0;
     const std::vector<Stage *>& getInputs() const
         { return m_inputs; }
-    Stage& getPrevStage() const;
-    std::vector<Stage *> getPrevStages() const;
+    std::vector<Stage*> findStage(std::string name);
     static Options getDefaultOptions()
         { return Options(); }
     static Dimension::IdList getDefaultDimensions()
@@ -104,9 +105,7 @@ public:
     static std::string s_getInfoLink()
         { return std::string(); }
     virtual boost::property_tree::ptree toPTree(PointContext ctx) const 
-    {
-        return boost::property_tree::ptree();
-    }
+        { return boost::property_tree::ptree(); }
 
 #define SET_STAGE_NAME(name, description)  \
     static std::string s_getName() { return name; }  \
@@ -130,7 +129,8 @@ public:
         { std::cerr << "Created crap sequential iterator!\n"; return NULL; }
     virtual StageRandomIterator* createRandomIterator(PointBuffer&) const
         { return NULL; }
-    MetadataNode const& getMetadata() const { return m_metadata; }
+    inline MetadataNode getMetadata() const 
+        { return m_metadata; }
 
 protected:
     Options m_options;
@@ -150,6 +150,8 @@ private:
     void Construct();
     void l_processOptions(const Options& options);
     virtual void processOptions(const Options& /*options*/)
+        {}
+    virtual void writerProcessOptions(const Options& /*options*/)
         {}
     void l_initialize(PointContext ctx);
     void l_done(PointContext ctx);

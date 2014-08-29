@@ -63,7 +63,6 @@ PgIterator::PgIterator(const PgReader& reader, const schema::DimInfoList& dims)
 {
     m_session = pg_connect(reader.connString());
 
-    //ABELL - Need to calc elsewhere.
     m_point_size = 0;
     for (auto di = m_dims.begin(); di != m_dims.end(); ++di)
         m_point_size += Dimension::size(di->m_type);
@@ -97,7 +96,7 @@ uint64_t PgIterator::skipImpl(uint64_t count)
 
 bool PgIterator::atEndImpl() const
 {
-    m_reader.log()->get(LogLevel::DEBUG) << "atEndImpl called" << std::endl;
+    m_reader.log()->get(LogLevel::Debug) << "atEndImpl called" << std::endl;
     return m_at_end;
 }
 
@@ -110,7 +109,7 @@ bool PgIterator::CursorSetup()
     pg_execute(m_session, oss.str());
     m_cursor = true;
 
-    m_reader.log()->get(LogLevel::DEBUG) << "SQL cursor prepared: " <<
+    m_reader.log()->get(LogLevel::Debug) << "SQL cursor prepared: " <<
         oss.str() << std::endl;
     return true;
 }
@@ -121,7 +120,7 @@ bool PgIterator::CursorTeardown()
     pg_execute(m_session, "CLOSE cur");
     pg_commit(m_session);
     m_cursor = false;
-    m_reader.log()->get(LogLevel::DEBUG) << "SQL cursor closed." <<
+    m_reader.log()->get(LogLevel::Debug) << "SQL cursor closed." <<
         std::endl;
     return true;
 }
@@ -163,9 +162,9 @@ bool PgIterator::NextBuffer()
         if (m_cur_result)
             PQclear(m_cur_result);
         m_cur_result = pg_query_result(m_session, fetch);
-        bool logOutput = (m_reader.log()->getLevel() > LogLevel::DEBUG3);
+        bool logOutput = (m_reader.log()->getLevel() > LogLevel::Debug3);
         if (logOutput)
-            m_reader.log()->get(LogLevel::DEBUG3) << "SQL: " <<
+            m_reader.log()->get(LogLevel::Debug3) << "SQL: " <<
                 fetch << std::endl;
         if ((PQresultStatus(m_cur_result) != PGRES_TUPLES_OK) ||
             (PQntuples(m_cur_result) == 0))
@@ -193,7 +192,7 @@ point_count_t PgIterator::readImpl(PointBuffer& buffer, point_count_t count)
     if (atEndImpl())
         return 0;
     
-    m_reader.log()->get(LogLevel::DEBUG) << "readBufferImpl called with "
+    m_reader.log()->get(LogLevel::Debug) << "readBufferImpl called with "
         "PointBuffer filled to " << buffer.size() << " points" <<
         std::endl;
 

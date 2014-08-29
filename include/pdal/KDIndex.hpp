@@ -45,7 +45,7 @@ class PDAL_DLL KDIndex
 {
 public:
     KDIndex(PointBuffer& buf) : m_buf(buf), m_index(0)
-        { m_3d = buf.context().hasDim(Dimension::Id::Z); }
+        { m_3d = buf.hasDim(Dimension::Id::Z); }
 
     ~KDIndex()
         { delete m_index; }
@@ -64,7 +64,7 @@ public:
         case 1:
             id = Dimension::Id::Y;
             break;
-        case 3:
+        case 2:
             id = Dimension::Id::Z;
             break;
         }
@@ -91,7 +91,7 @@ public:
 
     template <class BBOX> bool kdtree_get_bbox(BBOX &bb) const
     {
-        pdal::Bounds<double> const& bounds = m_buf.getSpatialBounds();
+        pdal::Bounds<double> bounds = m_buf.calculateBounds();
         if (bounds.empty())
             return false;
 
@@ -117,7 +117,7 @@ public:
             double distance,
             boost::uint32_t count = 1) const;
 
-    void build(PointContext ctx, bool b3d = true);
+    void build(bool b3d = true);
 
 private:
     const PointBuffer& m_buf;

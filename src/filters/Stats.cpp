@@ -52,6 +52,7 @@ void Summary::extractMetadata(MetadataNode &m) const
     m.add("minimum", minimum(), "minimum");
     m.add("maximum", maximum(), "maximum");
     m.add("average", average(), "average");
+    m.add("name", m_name, "name");
 
     std::ostringstream sample;
     for (std::vector<double>::size_type i = 0; i < m_sample.size(); ++i)
@@ -180,7 +181,7 @@ void Stats::ready(PointContext ctx)
 {
     using namespace std;
 
-    log()->get(LogLevel::DEBUG) << "Calculating histogram statistics for "
+    log()->get(LogLevel::Debug) << "Calculating histogram statistics for "
         "exact names '" << m_exact_dim_opt << "'"<< std::endl;
 
     vector<string> dims;
@@ -193,7 +194,7 @@ void Stats::ready(PointContext ctx)
         boost::trim(dimName);
         if (dimName.size())
         {
-            log()->get(LogLevel::DEBUG) << "adding '" << dimName <<
+            log()->get(LogLevel::Debug) << "adding '" << dimName <<
                 "' as exact dimension name to cumulate stats for" << std::endl;
             m_exact_dimension_names.insert(dimName);
             m_dimension_names.insert(dimName);
@@ -213,27 +214,27 @@ void Stats::ready(PointContext ctx)
 
     if (m_dimension_names.size())
     {
-        log()->get(LogLevel::DEBUG2) << "Explicit dimension size:" <<
+        log()->get(LogLevel::Debug2) << "Explicit dimension size:" <<
             m_dimension_names.size() << std::endl;
 
         for (auto i = m_dimension_names.begin();
                 i != m_dimension_names.end(); i++)
         {
             std::string const& name = *i;
-            log()->get(LogLevel::DEBUG2) << "Requested to cumulate stats for "
+            log()->get(LogLevel::Debug2) << "Requested to cumulate stats for "
                 "dimension with name '" << name <<"'"<< std::endl;
             Dimension::Id::Enum d = ctx.findDim(name);
             if (d == Dimension::Id::Unknown)
                 continue;
-            log()->get(LogLevel::DEBUG2) << "Found dimension with name '" <<
+            log()->get(LogLevel::Debug2) << "Found dimension with name '" <<
                 name << "'"<< std::endl;
-            log()->get(LogLevel::DEBUG2) << "Cumulating stats for dimension " <<
+            log()->get(LogLevel::Debug2) << "Cumulating stats for dimension " <<
                 name << std::endl;
 
             bool doExact =
                 (exact_dimensions.find(name) != exact_dimensions.end());
 
-            m_stats[d] = SummaryPtr(new stats::Summary(m_bin_count,
+            m_stats[d] = SummaryPtr(new stats::Summary(*i, m_bin_count,
                 m_sample_size, m_cache_size, m_seed, doExact, m_do_sample));
         }
     }
@@ -243,9 +244,9 @@ void Stats::ready(PointContext ctx)
         for (auto di = dims.begin(); di != dims.end(); ++di)
         {
             Dimension::Id::Enum d = *di;
-            log()->get(LogLevel::DEBUG2) << "Cumulating stats for dimension " <<
+            log()->get(LogLevel::Debug2) << "Cumulating stats for dimension " <<
                 ctx.dimName(d) << std::endl;
-            m_stats[d] = SummaryPtr(new stats::Summary(m_bin_count,
+            m_stats[d] = SummaryPtr(new stats::Summary(ctx.dimName(*di) ,m_bin_count,
                 m_sample_size, m_cache_size, m_seed, false, m_do_sample));
         }
     }
@@ -256,22 +257,28 @@ void Stats::extractMetadata(PointContext ctx)
 {
 
     boost::uint32_t position(0);
+    
+    // MetadataNode stat = m_metadata.add("statistic");
     for (auto di = m_stats.begin(); di != m_stats.end(); ++di)
     {
         Dimension::Id::Enum d = di->first;
-        const SummaryPtr stat = di->second;
+        const SummaryPtr s = di->second;
 
-        MetadataNode statNode = m_metadata.add(ctx.dimName(d));
-        statNode.add("position", position++);
-        stat->extractMetadata(statNode);
+        MetadataNode t = m_metadata.addList("statistic");
+        t.add("position", position++);
+        s->extractMetadata(t);
     }
 }
 
 
 boost::property_tree::ptree Stats::toPTree(PointContext ctx) const
 {
-    boost::property_tree::ptree tree;
+    using namespace boost::property_tree ;
+    ptree tree;
 
+    tree.push_back(ptree::value_type("stats", ptree()));
+    auto& p = tree.get_child("stats");
+    
     boost::uint32_t position(0);
     for (auto di = m_stats.begin(); di != m_stats.end(); ++di)
     {
@@ -280,7 +287,7 @@ boost::property_tree::ptree Stats::toPTree(PointContext ctx) const
 
         boost::property_tree::ptree subtree = stat->toPTree(ctx);
         subtree.add("position", position++);
-        tree.add_child(ctx.dimName(d), subtree);
+        p.add_child("", subtree);
     }
     return tree;
 }

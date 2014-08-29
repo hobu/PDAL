@@ -78,9 +78,9 @@ public:
     StageSequentialIterator* createSequentialIterator() const;
 
 private:
-    virtual void initialize();
     virtual void addDimensions(PointContext ctx);
     virtual void processOptions(const Options& options);
+    virtual void ready(PointContext ctx);
     
     pdal::SpatialReference fetchSpatialReference() const;
     boost::uint32_t fetchPcid() const;
@@ -95,7 +95,7 @@ private:
     mutable boost::uint64_t m_cached_point_count;
     mutable boost::uint64_t m_cached_max_points;
     schema::XMLSchema m_schema;
-
+    boost::optional<SpatialReference> m_spatialRef;
     PgReader& operator=(const PgReader&); // not implemented
     PgReader(const PgReader&); // not implemented
 };

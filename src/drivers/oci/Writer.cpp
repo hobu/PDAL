@@ -67,6 +67,7 @@ namespace oci
 Writer::Writer(const Options& options)
     : pdal::Writer(options)
     , m_createIndex(false)
+    , m_bDidCreateBlockTable(false)
     , m_pcExtent(3)
     , m_pc_id(0)
     , m_srid(0)
@@ -81,14 +82,6 @@ Writer::Writer(const Options& options)
 
 Writer::~Writer()
 {
-    try
-    {
-        m_connection->Commit();
-    }
-    catch (...)
-    {
-        // destructors shouldn't throw
-    }
 }
 
 
@@ -346,7 +339,7 @@ void Writer::createSDOEntry()
     pdal::Bounds<double> e = m_bounds;
     if (isGeographic(m_srid))
     {
-        // FIXME: This should be overrideable
+        //This should be overrideable
         e.setMinimum(0, -180.0);
         e.setMaximum(0, 180.0);
         e.setMinimum(1, -90.0);
@@ -383,7 +376,7 @@ bool Writer::blockTableExists()
     char szTable[OWNAME] = "";
     oss << "select table_name from user_tables";
 
-    log()->get(LogLevel::DEBUG) << "checking for " << m_blockTableName <<
+    log()->get(LogLevel::Debug) << "checking for " << m_blockTableName <<
         " existence ... " ;
 
     Statement statement(m_connection->CreateStatement(oss.str().c_str()));
@@ -394,19 +387,19 @@ bool Writer::blockTableExists()
     statement->Define(szTable);
     statement->Execute();
 
-    log()->get(LogLevel::DEBUG) << "checking ... " << szTable ;
+    log()->get(LogLevel::Debug) << "checking ... " << szTable ;
     do
     {
-        log()->get(LogLevel::DEBUG) << ", " << szTable;
+        log()->get(LogLevel::Debug) << ", " << szTable;
         if (boost::iequals(szTable, m_blockTableName))
         {
-            log()->get(LogLevel::DEBUG) << " -- '" << m_blockTableName <<
+            log()->get(LogLevel::Debug) << " -- '" << m_blockTableName <<
                 "' found." <<std::endl;
             return true;
         }
     } while (statement->Fetch());
 
-    log()->get(LogLevel::DEBUG) << " -- '" << m_blockTableName <<
+    log()->get(LogLevel::Debug) << " -- '" << m_blockTableName <<
         "' not found." << std::endl;
     return false;
 }
@@ -420,6 +413,7 @@ void Writer::createBlockTable()
 
     runCommand(oss);
     m_connection->Commit();
+    m_bDidCreateBlockTable = true;
 }
 
 
@@ -597,7 +591,7 @@ void Writer::createPCEntry()
         s_geom << "," << bounds.getMaximum(2);
     s_geom << "))";
 
-    schema::Writer writer(m_dims, m_types);
+    schema::Writer writer(m_dims, m_types, m_orientation);
     std::string schemaData = writer.getXML();
 
     oss << "declare\n"
@@ -687,14 +681,6 @@ void Writer::createPCEntry()
         throw pdal_error(oss.str());
     }
 
-    //ABELL - I don't get this.  Why do we get the value?  It doesn't look
-    //  like we ever retreive the option anyplace else.
-    //HOBU - because the SDO_PC.init method returns a database value for the 
-    //  object it created. We want to reflect that in metadata in addition to  
-    //  using it for the obj_id when writing the blocks
-    //ABELL - But how is it ever written?  What I don't see is that its value
-    //  AS AN OPTION is ever used (we never seem to retrieve the option
-    //  "pc_id").  Do we just scoop up all options as metadata someplace?
     try
     {
         Option& pc_id = m_options.getOptionByRef("pc_id");
@@ -788,7 +774,7 @@ void Writer::writeInit()
 
     if (m_trace)
     {
-        log()->get(LogLevel::DEBUG) << "Setting database trace..." << std::endl;
+        log()->get(LogLevel::Debug) << "Setting database trace..." << std::endl;
         std::ostringstream oss;
         oss << "BEGIN " << std::endl;
         oss << "DBMS_SESSION.set_sql_trace(sql_trace => TRUE);" << std::endl;
@@ -804,7 +790,7 @@ void Writer::writeInit()
         char traceTableName[1024] = {0};
         statement->Define(traceTableName, sizeof(traceTableName));
         statement->Execute();
-        log()->get(LogLevel::DEBUG) << "Trace location name:  " <<
+        log()->get(LogLevel::Debug) << "Trace location name:  " <<
             traceTableName << std::endl;
 
     }
@@ -842,8 +828,11 @@ void Writer::ready(PointContext ctx)
 
 void Writer::done(PointContext ctx)
 {
+    if (!m_connection)
+        return;
+    
     m_connection->Commit();
-    if (m_createIndex)
+    if (m_createIndex && m_bDidCreateBlockTable)
     {
         createSDOEntry();
         createBlockIndex();
@@ -974,18 +963,18 @@ void Writer::writeTile(PointBuffer const& buffer)
 
     // :1
     statement->Bind(&m_pc_id);
-    log()->get(LogLevel::DEBUG4) << "Block obj_id " << m_pc_id << std::endl;
+    log()->get(LogLevel::Debug4) << "Block obj_id " << m_pc_id << std::endl;
 
     // :2
     statement->Bind(&m_lastBlockId);
     m_lastBlockId++;
-    log()->get(LogLevel::DEBUG4) << "Last BlockId " <<
+    log()->get(LogLevel::Debug4) << "Last BlockId " <<
         m_lastBlockId << std::endl;
 
     // :3
     long long_num_points = static_cast<long>(buffer.size());
     statement->Bind(&long_num_points);
-    log()->get(LogLevel::DEBUG4) << "Num points " <<
+    log()->get(LogLevel::Debug4) << "Num points " <<
         long_num_points << std::endl;
 
 
@@ -1028,7 +1017,7 @@ void Writer::writeTile(PointBuffer const& buffer)
     }
     m_callback->invoke(buffer.size());
 
-    log()->get(LogLevel::DEBUG4) << "Blob size " << outbufSize << std::endl;
+    log()->get(LogLevel::Debug4) << "Blob size " << outbufSize << std::endl;
     OCILobLocator* locator;
     if (m_streamChunks)
     {
@@ -1041,7 +1030,7 @@ void Writer::writeTile(PointBuffer const& buffer)
     // :5
     long long_gtype = static_cast<long>(m_gtype);
     statement->Bind(&long_gtype);
-    log()->get(LogLevel::DEBUG4) << "OCI geometry type " <<
+    log()->get(LogLevel::Debug4) << "OCI geometry type " <<
         m_gtype << std::endl;
 
     // :6
@@ -1050,7 +1039,7 @@ void Writer::writeTile(PointBuffer const& buffer)
     if (m_srid != 0)
         srid = m_srid;
     statement->Bind(&srid);
-    log()->get(LogLevel::DEBUG4) << "OCI SRID " << srid << std::endl;
+    log()->get(LogLevel::Debug4) << "OCI SRID " << srid << std::endl;
     
 
     // :7
@@ -1064,22 +1053,20 @@ void Writer::writeTile(PointBuffer const& buffer)
     m_connection->CreateType(&sdo_ordinates, m_connection->GetOrdinateType());
 
     // x0, x1, y0, y1, z0, z1, bUse3d
-    //ABELL - Should we keep buffer's bounds correct always?  They are if
-    //  they come throught the chipper.  Perhaps we can dispense with this.
     pdal::Bounds<double> bounds = buffer.calculateBounds(true);
     // Cumulate a total bounds for the file.
     m_pcExtent.grow(bounds);
 
     setOrdinates(statement, sdo_ordinates, bounds);
     statement->Bind(&sdo_ordinates, m_connection->GetOrdinateType());
-    log()->get(LogLevel::DEBUG4) << "Bounds " << bounds << std::endl;
+    log()->get(LogLevel::Debug4) << "Bounds " << bounds << std::endl;
 
     // :9
     if (usePartition)
     {
         long long_partition_id = (long)m_blockTablePartitionValue;
         statement->Bind(&long_partition_id);
-        log()->get(LogLevel::DEBUG4) << "Partition ID " << long_partition_id <<
+        log()->get(LogLevel::Debug4) << "Partition ID " << long_partition_id <<
             std::endl;        
     }
 

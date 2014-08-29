@@ -60,7 +60,7 @@ Options Splitter::getDefaultOptions()
 }
 
 
-//ABELL - This used to be a lambda, but the VS compiler exploded, I guess.
+//This used to be a lambda, but the VS compiler exploded, I guess.
 typedef std::pair<int, int> Coord;
 namespace
 {
@@ -102,25 +102,16 @@ PointBufferSet Splitter::run(PointBufferPtr buf)
         Coord loc(xpos, ypos);
         PointBufferPtr& outbuf = buffers[loc];
         if (!outbuf)
-            outbuf.reset(new PointBuffer(buf->context()));
+            outbuf = buf->makeNew();
         outbuf->appendPoint(*buf, idx);
     }
 
     // Pull the buffers out of the map and stick them in the standard
     // output set, setting the bounds as we go.
     for (auto bi = buffers.begin(); bi != buffers.end(); ++bi)
-    {
-        PointBufferPtr buf = bi->second;
-        Coord coord = bi->first;
-        Bounds<double> bounds(coord.first + xOrigin, coord.second + yOrigin,
-            coord.first + xOrigin + m_length,
-            coord.second + yOrigin + m_length);
-        buf->setSpatialBounds(bounds);
-        pbSet.insert(buf);
-    }
+        pbSet.insert(bi->second);
     return pbSet;
 }
-
 
 } // filters
 } // pdal

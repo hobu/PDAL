@@ -45,19 +45,32 @@ namespace pdal
 typedef std::vector<uint8_t>::size_type PointId;
 typedef std::vector<PointId>::size_type point_count_t;
 
+struct XForm
+{
+public:
+    XForm() : m_scale(1.0), m_offset(0.0)
+    {}
+
+    XForm(double scale, double offset) : m_scale(scale), m_offset(offset)
+    {}
+
+    double m_scale;
+    double m_offset;
+};
+
 namespace LogLevel
 {
 enum Enum
 {
-    ERROR = 0,
-    WARNING,
-    INFO,
-    DEBUG,
-    DEBUG1,
-    DEBUG2,
-    DEBUG3,
-    DEBUG4,
-    DEBUG5
+    Error = 0,
+    Warning,
+    Info,
+    Debug,
+    Debug1,
+    Debug2,
+    Debug3,
+    Debug4,
+    Debug5
 };
 } // namespace LogLevel
 

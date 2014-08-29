@@ -172,11 +172,7 @@ boost::uint32_t Utils::getStreamPrecision(double scale)
     double integer = 0;
 
     frac = modf(scale, &integer);
-    double precision = fabs(floor(log10(frac)));
-
-    // FIXME: This should test that precision actually ends up being a
-    // whole number
-    return static_cast<boost::uint32_t>(precision);
+    return abs(floorl(log10(frac)));
 }
 
 boost::uint32_t Utils::safeconvert64to32(boost::uint64_t x64)
@@ -564,6 +560,32 @@ string Utils::replaceAll(string result, const string& replaceWhat,
         result.replace(pos,replaceWhat.size(),replaceWithWhat);
     }
     return result;
+}
+
+// Stolen from http://stackoverflow.com/questions/7724448/simple-json-string-escape-for-c/11969098#11969098
+
+std::string & Utils::escapeJSON(string &str)
+{
+    str.erase
+    (
+        remove_if
+        (
+            str.begin(),
+            str.end(),
+            [](const char c)
+            {
+                return (c <= 31);
+            }
+        ),
+        str.end()
+    );
+    size_t pos=0;
+    while((pos=str.find_first_of("\"\\/", pos))!=string::npos)
+    {
+        str.insert(pos, "\\");
+        ++++pos;
+    }
+    return str;
 }
 
 /// Break a string into a list of strings, none of which exceeds a specified

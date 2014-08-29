@@ -80,9 +80,9 @@ public:
 
     static Options getDefaultOptions();
 
-    void setFormatVersion(boost::uint8_t majorVersion, boost::uint8_t minorVersion);
+    void setFormatVersion(uint8_t majorVersion, uint8_t minorVersion);
     void setPointFormat(PointFormat);
-    void setDate(boost::uint16_t dayOfYear, boost::uint16_t year);
+    void setDate(uint16_t dayOfYear, uint16_t year);
 
     void setProjectId(const boost::uuids::uuid&);
 
@@ -101,22 +101,6 @@ protected:
     void Construct();
     virtual void initialize();
 
-    //ABELL
-    virtual void writeBegin(boost::uint64_t targetNumPointsToWrite)
-    {}
-    //ABELL
-    virtual void writeBufferBegin(PointBuffer const&)
-    {}
-    //ABELL
-    virtual boost::uint32_t writeBuffer(const PointBuffer&)
-        { return 0; }
-    //ABELL
-    virtual void writeBufferEnd(PointBuffer const&)
-    {}
-    //ABELL
-    virtual void writeEnd(boost::uint64_t actualNumPointsWritten)
-    {}
-
     OutputStreamManager m_streamManager;
 
 private:
@@ -133,9 +117,9 @@ private:
     virtual void write(const PointBuffer& pointBuffer);
     virtual void done(PointContext ctx);
     bool m_headerInitialized;
+    bool m_discardHighReturnNumbers;
     boost::uint64_t m_streamOffset; // the first byte of the LAS file
 	void setOptions();
-//    bool doForwardThisMetadata(std::string const& name) const;
     MetadataNode findVlr(MetadataNode node, const std::string& recordId,
         const std::string& userId);
     void setVLRsFromMetadata(LasHeader& header, MetadataNode metaNode,

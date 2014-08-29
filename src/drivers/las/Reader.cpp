@@ -175,13 +175,13 @@ void Reader::extractMetadata(MetadataNode& m)
         "source can be considered an original flight line or it can be the "
         "result of merge and/or extract operations.");
 
+    //Reserved is always 0, making this seem a bit silly.
     boost::uint16_t reserved = header.GetReserved();
-    //ABELL  Byte order assumptions?
-    boost::uint8_t* start = (uint8_t*)&reserved;
+    uint8_t *start = (uint8_t*)&reserved;
     std::vector<uint8_t> raw_bytes;
     for (std::size_t i = 0 ; i < sizeof(uint16_t); ++i)
         raw_bytes.push_back(start[i]);
-    pdal::ByteArray bytearray(raw_bytes);
+    ByteArray bytearray(raw_bytes);
 
     m.add("global_encoding", bytearray, "Global Encoding: "
         "This is a bit field used to "
@@ -477,8 +477,6 @@ point_count_t Base::processBuffer(PointBuffer& data, std::istream& stream,
         catch (pdal::invalid_stream&)
         {}
     }
-//ABELL
-//    data.setSpatialBounds(m_bounds);
     return (point_count_t)i;
 }
 

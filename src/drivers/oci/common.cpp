@@ -108,7 +108,7 @@ schema::XMLSchema fetchSchema(Statement stmt, BlockPtr block)
 
 
 Block::Block(Connection connection) : num_points(0), m_connection(connection),
-    m_num_remaining(0), m_fetched(false)
+    m_num_remaining(0), m_fetched(false), m_point_size(0)
 {
     m_connection->CreateType(&blk_extent);
     m_connection->CreateType(&blk_extent->sdo_ordinates,
@@ -126,7 +126,7 @@ Block::~Block()
     m_connection->DestroyType(&blk_extent->sdo_elem_info);
     m_connection->DestroyType(&blk_extent->sdo_ordinates);
     m_connection->DestroyType(&pc);
-    // FIXME: For some reason having the dtor destroy this
+    // For some reason having the dtor destroy this
     // causes a segfault
     // m_connection->DestroyType(&blk_extent);
 }
@@ -134,6 +134,7 @@ Block::~Block()
 
 void Block::update(schema::XMLSchema *s)
 {
+    m_point_size = 0; // Wipe the size to reset
     m_num_remaining = num_points;
     m_schema.m_orientation = s->m_orientation;
     for (auto di = s->m_dims.begin(); di != s->m_dims.end(); ++di)
@@ -155,6 +156,8 @@ void Block::update(schema::XMLSchema *s)
             m_schema.m_scale.m_z.m_scale = d.m_scale;
             m_schema.m_scale.m_z.m_offset = d.m_offset;
         }
+        
+        m_point_size += Dimension::size(di->m_type);
     }
 }
 
