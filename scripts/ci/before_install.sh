@@ -8,19 +8,13 @@ sudo apt-get install software-properties-common -y
 sudo apt-get install python-software-properties -y
 sudo add-apt-repository ppa:ubuntugis/ppa -y
 sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-if [[ $PDAL_EMBED_BOOST == "OFF" ]]
-then
-    sudo add-apt-repository ppa:boost-latest/ppa -y
-fi
+sudo add-apt-repository ppa:boost-latest/ppa -y
 sudo apt-get update -qq
 
 # Install g++-4.8 (even if we're building clang) for updated libstdc++
 sudo apt-get install g++-4.8
 
-if [[ $PDAL_EMBED_BOOST == "OFF" ]]
-then
-    sudo apt-get install boost1.55
-fi
+sudo apt-get install boost1.55
 
 if [[ $PDAL_CMAKE_GENERATOR == "Ninja" ]]
 then
