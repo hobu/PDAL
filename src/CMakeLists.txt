@@ -386,7 +386,7 @@ set (PDAL_DRIVERS_PCD_CPP
     "${PDAL_PCD_SRC}/Writer.cpp"
 )
 
-if (WITH_PCL)
+if (WITH_PCL OR WITH_STUBS)
     list (APPEND PDAL_CPP ${PDAL_DRIVERS_PCD_CPP} )
     list (APPEND PDAL_HPP ${PDAL_DRIVERS_PCD_HPP} )
 endif()
