@@ -69,7 +69,7 @@ set(PDAL_BASE_HPP
   "${PDAL_HEADERS_DIR}/third/string_ref_fwd.hpp"
 )
 
-if (PDAL_HAVE_PCL)
+if (WITH_PCL AND PDAL_HAVE_PCL)
     list (APPEND PDAL_BASE_HPP "${PDAL_HEADERS_DIR}/PCLConversions.hpp")
 endif()
 
@@ -369,26 +369,26 @@ endif()
 #
 # drivers/pcd
 #
-set(PDAL_PCD_PATH drivers/pcd)
-set(PDAL_PCD_HEADERS "${PDAL_HEADERS_DIR}/${PDAL_PCD_PATH}")
-set(PDAL_PCD_SRC "${PROJECT_SOURCE_DIR}/src/${PDAL_PCD_PATH}")
+if (WITH_PCL AND PDAL_HAVE_PCL)
+    set(PDAL_PCD_PATH drivers/pcd)
+    set(PDAL_PCD_HEADERS "${PDAL_HEADERS_DIR}/${PDAL_PCD_PATH}")
+    set(PDAL_PCD_SRC "${PROJECT_SOURCE_DIR}/src/${PDAL_PCD_PATH}")
 
-set(PDAL_DRIVERS_PCD_HPP
-    "${PDAL_PCD_HEADERS}/point_types.hpp"
-    "${PDAL_PCD_HEADERS}/Common.hpp"
-    "${PDAL_PCD_HEADERS}/Reader.hpp"
-    "${PDAL_PCD_HEADERS}/Writer.hpp"
-)
+    set(PDAL_DRIVERS_PCD_HPP
+	"${PDAL_PCD_HEADERS}/point_types.hpp"
+	"${PDAL_PCD_HEADERS}/Common.hpp"
+	"${PDAL_PCD_HEADERS}/Reader.hpp"
+	"${PDAL_PCD_HEADERS}/Writer.hpp"
+    )
 
-set (PDAL_DRIVERS_PCD_CPP 
-    "${PDAL_PCD_SRC}/Common.cpp"
-    "${PDAL_PCD_SRC}/Reader.cpp"
-    "${PDAL_PCD_SRC}/Writer.cpp"
-)
+    set (PDAL_DRIVERS_PCD_CPP 
+	"${PDAL_PCD_SRC}/Common.cpp"
+	"${PDAL_PCD_SRC}/Reader.cpp"
+	"${PDAL_PCD_SRC}/Writer.cpp"
+    )
 
-if (WITH_PCL OR WITH_STUBS)
-    list (APPEND PDAL_CPP ${PDAL_DRIVERS_PCD_CPP} )
-    list (APPEND PDAL_HPP ${PDAL_DRIVERS_PCD_HPP} )
+	list (APPEND PDAL_CPP ${PDAL_DRIVERS_PCD_CPP} )
+	list (APPEND PDAL_HPP ${PDAL_DRIVERS_PCD_HPP} )
 endif()
 
 #
@@ -720,20 +720,19 @@ list (APPEND PDAL_HPP ${PDAL_KERNEL_HPP} )
 #
 # pcl
 #
-if (PDAL_HAVE_PCL)
+if (WITH_PCL AND PDAL_HAVE_PCL)
     set(PDAL_PCL_HPP
 	${PDAL_KERNEL_HEADERS}/PCL.hpp
 	${PDAL_FILTERS_HEADERS}/PCLBlock.hpp
-	)
+    )
+
     set(PDAL_PCL_CPP
 	${PDAL_FILTERS_SRC}/PCLBlock.cpp
 	${PDAL_KERNEL_SRC}/PCL.cpp
-	)
+    )
 
-    if (WITH_PCL OR WITH_STUBS)
 	list(APPEND PDAL_HPP ${PDAL_PCL_HPP})
 	list(APPEND PDAL_CPP ${PDAL_PCL_CPP})
-    endif (WITH_PCL OR WITH_STUBS)
 endif()
 
 #
@@ -754,6 +753,7 @@ source_group("Header Files\\drivers\\sbet" FILES ${PDAL_DRIVERS_SBET_HPP})
 source_group("Header Files\\drivers\\greyhound" FILES ${PDAL_DRIVERS_GREYHOUND_HPP})
 source_group("Header Files\\drivers\\terrasolid" FILES ${PDAL_DRIVERS_TERRASOLID_HPP})
 source_group("Header Files\\drivers\\text" FILES ${PDAL_DRIVERS_TEXT_HPP})
+source_group("Header Files\\drivers\\pcd" FILES ${PDAL_DRIVERS_PCD_HPP})
 source_group("Header Files\\drivers\\pgpointcloud" FILES ${PDAL_DRIVERS_PGPOINTCLOUD_HPP})
 source_group("Header Files\\filters" FILES ${PDAL_FILTERS_HPP})
 source_group("Header Files\\plang" FILES ${PDAL_PLANG_HPP})
@@ -770,6 +770,7 @@ source_group("Source Files\\drivers\\sbet" FILES ${PDAL_DRIVERS_SBET_CPP})
 source_group("Source Files\\drivers\\greyhound" FILES ${PDAL_DRIVERS_GREYHOUND_CPP})
 source_group("Source Files\\drivers\\terrasolid" FILES ${PDAL_DRIVERS_TERRASOLID_CPP})
 source_group("Source Files\\drivers\\text" FILES ${PDAL_DRIVERS_TEXT_CPP})
+source_group("Source Files\\drivers\\pcd" FILES ${PDAL_DRIVERS_PCD_CPP})
 source_group("Source Files\\drivers\\pgpointcloud" FILES ${PDAL_DRIVERS_PGPOINTCLOUD_CPP})
 source_group("Source Files\\filters" FILES ${PDAL_FILTERS_CPP})
 source_group("Source Files\\plang" FILES ${PDAL_PLANG_CPP})
@@ -839,7 +840,7 @@ if (WITH_PYTHON)
     target_link_libraries(${PDAL_LIB_NAME} ${PDAL_LINKAGE} "${PYTHON_LIBRARY}")
 endif()
 
-if (WITH_PCL)
+if (PCL_LIBRARIES)
     target_link_libraries(${PDAL_LIB_NAME} ${PDAL_LINKAGE} ${PCL_LIBRARIES})
 endif()
 

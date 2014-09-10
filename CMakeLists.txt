@@ -91,7 +91,7 @@ endif(WIN32)
 option(WITH_APPS "Choose if PDAL utilities should be built" TRUE)
 option(WITH_TESTS "Choose if PDAL unit tests should be built" TRUE)
 
-option(WITH_STUBS "Use stubs if libraries are not enabled" TRUE)
+option(WITH_STUBS "Use stubs if libraries are not enabled" FALSE)
 set(PDAL_STUB_DIR "${PDAL_SOURCE_DIR}/include/stubs")
 
 # Choose to use pkg-config or not
@@ -252,7 +252,7 @@ if(WIN32)
   endif(MSVC)
 endif(WIN32)
 
-find_package(Boost 1.55 COMPONENTS program_options thread iostreams filesystem system unit_test_framework random)
+find_package(Boost 1.54 COMPONENTS program_options thread iostreams filesystem system unit_test_framework random REQUIRED)
 
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
@@ -272,24 +272,24 @@ endif(Boost_FOUND)
 option(WITH_PCL "Choose if PCL support should be built" FALSE)
 if(WITH_PCL)
     find_package(PCL 1.7)
+    # PCL's configuration clobbers Boost find_package - do it again
+    find_package(Boost 1.54 COMPONENTS program_options thread iostreams filesystem system unit_test_framework random REQUIRED)
     if(PCL_FOUND)
         set(PDAL_HAVE_PCL 1)
         set(WITH_PCL_TEST 1)
         include_directories(${PCL_INCLUDE_DIRS})
         link_directories(${PCL_LIBRARY_DIRS})
         add_definitions(${PCL_DEFINITIONS})
-        # PCL's configuration clobbers Boost find_package - do it again
-        find_package(Boost 1.52 COMPONENTS program_options thread iostreams filesystem system unit_test_framework random)
-
         message(STATUS "...building with PCL")
+    elseif(WITH_STUBS)
+        set(PDAL_HAVE_PCL 1)
+        set(WITH_PCL_TEST 0)
+        include_directories(${PDAL_STUB_DIR})
+        set(PCL_LIBRARIES "")
     else()
         set(PCL_LIBRARIES "")
     endif()
-elseif(WITH_STUBS)
-    set(PDAL_HAVE_PCL 1)
-    set(WITH_PCL_TEST 0)
-    include_directories(${PDAL_STUB_DIR})
-endif()
+endif(WITH_PCL)
 
 #------------------------------------------------------------------------------
 # settings for GDAL & related dependencies
@@ -414,35 +414,6 @@ endif()
 #------------------------------------------------------------------------------
 # settings for other 3rd party dependencies
 #------------------------------------------------------------------------------
-
-# swig support
-if (WIN32)
-    # keep C# bindings it off by default, even on windows, since not everyone wants it
-    option(WITH_SWIG_CSHARP "Choose if you want to make C# bindings via Swig" FALSE)
-else()
-    # swig/C# not likely to be supported anytime soon
-    option(WITH_SWIG_CSHARP "Choose if you want to make C# bindings via Swig" FALSE)
-endif()
-
-option(WITH_SWIG_PYTHON "Choose if you want to make Python bindings via Swig" FALSE)
-
-if(WITH_SWIG_CSHARP OR WITH_SWIG_PYTHON)
-    find_package(SWIG 2.0.1 REQUIRED)
-    if (SWIG_FOUND)
-        include("${SWIG_USE_FILE}")
-        message(STATUS "Found Swig version ${SWIG_VERSION}")
-        if(WITH_SWIG_CSHARP)
-            add_subdirectory(csharp)
-            set(PDAL_HAVE_SWIG_CSHARP 1)
-            message(STATUS "...enabling swig for csharp")
-        endif()
-        if(WITH_SWIG_PYTHON)
-            add_subdirectory(python)
-            set(PDAL_HAVE_SWIG_PYTHON 1)
-            message(STATUS "Enabling swig for python")
-        endif()
-    endif()
-endif()
 
 # iconv support - optional, default=ON
 # GDAL and libxml2 require iconv.  The library is supplied by OSGeo4W.
@@ -621,16 +592,6 @@ if(WITH_GREYHOUND)
         set(WITH_GREYHOUND FALSE)
         set(PDAL_HAVE_GREYHOUND 0)
         message(STATUS "Greyhound dependencies not found")
-    endif()
-endif()
-
-if(WITH_FREEGLUT)
-    find_package(FreeGLUT)
-    if(FREEGLUT_FOUND)
-        include_directories(${FREEGLUT_INCLUDE_DIR})
-        add_definitions(-DHAVE_FREEGLUT=1)
-        set(PDAL_HAVE_FREEGLUT 1)
-        message(STATUS "Found FreeGLUT")
     endif()
 endif()
 

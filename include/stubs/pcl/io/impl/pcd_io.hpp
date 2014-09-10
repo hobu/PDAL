@@ -12,6 +12,7 @@
     }; \
   };
 
+#define EIGEN_ALIGN16
 #define EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 #define POINT_CLOUD_REGISTER_POINT_STRUCT(a, b)
 

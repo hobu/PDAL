@@ -83,7 +83,7 @@ MAKE_READER_CREATOR(SqliteReader, pdal::drivers::sqlite::SQLiteReader)
 #endif
 #endif
 
-#ifdef PDAL_HAVE_PCL
+#if defined(WITH_PCL) && defined(PDAL_HAVE_PCL)
 MAKE_READER_CREATOR(PcdReader, pdal::drivers::pcd::PcdReader);
 #endif
 
@@ -116,7 +116,7 @@ MAKE_FILTER_CREATOR(Decimation, pdal::filters::Decimation)
 MAKE_FILTER_CREATOR(HexBin, pdal::filters::HexBin)
 MAKE_FILTER_CREATOR(Merge, pdal::filters::Merge)
 //MAKE_FILTER_CREATOR(InPlaceReprojection, pdal::filters::InPlaceReprojection)
-#ifdef PDAL_HAVE_PCL
+#if defined(WITH_PCL) && defined(PDAL_HAVE_PCL)
 MAKE_FILTER_CREATOR(PCLBlock, pdal::filters::PCLBlock)
 #endif
 
@@ -155,7 +155,7 @@ MAKE_WRITER_CREATOR(OciWriter, pdal::drivers::oci::Writer)
 MAKE_WRITER_CREATOR(P2GWriter, pdal::drivers::p2g::P2gWriter)
 #endif
 
-#ifdef PDAL_HAVE_PCL
+#if defined(WITH_PCL) && defined(PDAL_HAVE_PCL)
 MAKE_WRITER_CREATOR(PcdWriter, pdal::drivers::pcd::PcdWriter);
 #endif
 
@@ -203,8 +203,8 @@ std::string StageFactory::inferReaderDriver(const std::string& filename)
     drivers["sbet"] = "drivers.sbet.reader";
     drivers["icebridge"] = "drivers.icebridge.reader";
     drivers["sqlite"] = "drivers.sqlite.reader";
-    
-#ifdef PDAL_HAVE_PCL
+
+#if defined(WITH_PCL) && defined(PDAL_HAVE_PCL)
     drivers["pcd"] = "drivers.pcd.reader";
 #endif
 
@@ -227,7 +227,7 @@ std::string StageFactory::inferWriterDriver(const std::string& filename)
     std::map<std::string, std::string> drivers;
     drivers["las"] = "drivers.las.writer";
     drivers["laz"] = "drivers.las.writer";
-#ifdef PDAL_HAVE_PCL
+#if defined(WITH_PCL) && defined(PDAL_HAVE_PCL)
     drivers["pcd"] = "drivers.pcd.writer";
 #endif
     drivers["csv"] = "drivers.text.writer";
@@ -235,7 +235,7 @@ std::string StageFactory::inferWriterDriver(const std::string& filename)
     drivers["xyz"] = "drivers.text.writer";
     drivers["txt"] = "drivers.text.writer";
     drivers["ntf"] = "drivers.nitf.writer";
-    drivers["sqlite"] = "drivers.sqlite.writer";    
+    drivers["sqlite"] = "drivers.sqlite.writer";
 
     if (boost::algorithm::iequals(filename, "STDOUT"))
     {
@@ -385,7 +385,7 @@ void StageFactory::registerKnownReaders()
 #endif
 #endif
 
-#ifdef PDAL_HAVE_PCL
+#if defined(WITH_PCL) && defined(PDAL_HAVE_PCL)
     REGISTER_READER(PcdReader, pdal::drivers::pcd::PcdReader);
 #endif
 
@@ -425,7 +425,7 @@ void StageFactory::registerKnownFilters()
     REGISTER_FILTER(HexBin, pdal::filters::HexBin);
     REGISTER_FILTER(Merge, pdal::filters::Merge);
 //    REGISTER_FILTER(InPlaceReprojection, pdal::filters::InPlaceReprojection);
-#ifdef PDAL_HAVE_PCL
+#if defined(WITH_PCL) && defined(PDAL_HAVE_PCL)
     REGISTER_FILTER(PCLBlock, pdal::filters::PCLBlock);
 #endif
 
@@ -460,7 +460,7 @@ void StageFactory::registerKnownWriters()
     REGISTER_WRITER(P2GWriter, pdal::drivers::p2g::P2gWriter);
 #endif
 
-#ifdef PDAL_HAVE_PCL
+#if defined(WITH_PCL) && defined(PDAL_HAVE_PCL)
     REGISTER_WRITER(PcdWriter, pdal::drivers::pcd::PcdWriter);
 #endif
 
@@ -616,17 +616,17 @@ std::map<std::string, pdal::StageInfo> const& StageFactory::getStageInfos() cons
 std::string StageFactory::toRST(std::string driverName) const
 {
     std::ostringstream os;
-    
+
     std::map<std::string, pdal::StageInfo> const& drivers = getStageInfos();
     typedef std::map<std::string, pdal::StageInfo>::const_iterator Iterator;
-    
+
     Iterator i = drivers.find(driverName);
     std::string headline("------------------------------------------------------------------------------------------");
-    
+
     os << headline << std::endl;
     os << "PDAL Options" << " (" << pdal::GetFullVersionString() << ")" <<std::endl;
     os << headline << std::endl << std::endl;
-    
+
     // If we were given an explicit driver name, only display that.
     // Otherwise, display output for all of the registered drivers.
     if ( i != drivers.end())
