@@ -32,18 +32,20 @@ jobs:
       - name: Test CI reporting
         run: node --test .github/scripts/pr-ci-comments.test.cjs
 
-      - name: Get environment cache date
-        id: date
-        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
-
       - uses: mamba-org/setup-micromamba@v3
         with:
           init-shell: bash
+          # The action includes the micromamba binary in the environment key.
+          # Pin it so a tool release does not invalidate a working environment.
+          micromamba-version: '2.9.0-0'
+          download-micromamba: true
           environment-file: scripts/ci/current-environment.yml
           environment-name: pdal-build
-          # Refresh the unlocked current packages daily instead of indefinitely
-          # reusing the first environment solved for this YAML file.
-          cache-environment-key: gate-current-${{ steps.date.outputs.date }}
+          # Reuse the solved environment across days and code-only changes.
+          # The action also hashes the environment file and includes architecture.
+          # Bump v1 to deliberately refresh dependencies without changing specs.
+          cache-environment: true
+          cache-environment-key: gate-current-v1
           cache-downloads: true
 
       - name: ccache

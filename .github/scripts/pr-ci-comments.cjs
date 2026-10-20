@@ -114,14 +114,14 @@ async function reportResults(github, context, core) {
         if (passed(INITIAL_JOB)) {
             await upsertComment(github, repo, pr.number,
                 `<!-- pdal-ci-initial:${run.head_sha} -->`,
-                `✅ Initial CI passed on Linux ARM64 with current Conda packages for \`${run.head_sha}\`.\n\n` +
+                `✅ Initial CI passed on Linux ARM64 with cached Conda dependencies for \`${run.head_sha}\`.\n\n` +
                 `A maintainer can apply the \`${FULL_LABEL}\` label to run the full CI matrix.\n\n` +
                 `[View CI run](${run.html_url})`);
         }
         if (run.conclusion === 'success' && passed(INITIAL_JOB) && passed(FULL_JOB)) {
             await upsertComment(github, repo, pr.number,
                 `<!-- pdal-ci-full:${run.head_sha} -->`,
-                `✅ The full CI matrix passed for \`${run.head_sha}\`: Linux ARM64 (current Conda packages), Pixi, ` +
+                `✅ The full CI matrix passed for \`${run.head_sha}\`: Linux ARM64 (cached Conda dependencies), Pixi, ` +
                 `Linux (current and fixed), macOS, Windows (current and fixed), Alpine, ` +
                 `Conda (Linux, macOS, and Windows), and Docker (AMD64 and ARM64).\n\n` +
                 `Maintainers and project managers: this revision has passed all CI platforms.\n\n` +

@@ -3,9 +3,11 @@
 Every opened, reopened, or updated PR first runs a Linux Debug build and tests on
 `ubuntu-24.04-arm`, including documentation-only PRs. The gate uses the existing
 Linux CMake configuration, `scripts/ci/current-environment.yml`, and `ccache`.
-Its unlocked Conda environment cache refreshes daily. It configures and builds
-once, then invokes CTest directly. Master pushes also run the ARM64 gate to
-populate caches that new PRs can restore. Installation, examples, standalone plugin
+The complete solved Conda environment is cached with a stable versioned key;
+cache hits skip dependency solving and installation, even on later days. The gate
+prioritizes reusing working dependencies over picking up every package release.
+It configures and builds once, then invokes CTest directly. Master pushes also run
+the ARM64 gate to populate caches that new PRs can restore. Installation, examples, standalone plugin
 rebuilds, and the second locale test pass remain in the full matrix. A successful
 initial run posts an **Initial CI passed** comment with the tested head SHA and
 run link.
@@ -16,6 +18,16 @@ compilation. The gate uses the faster Debug configuration and compiler caching
 while retaining the basic Linux build's test coverage.
 Standard ARM64 and x64 GitHub-hosted runners are both free for public repositories;
 the gate uses the standard ARM64 runner, not a paid larger runner.
+
+The environment cache automatically changes when `current-environment.yml`
+changes. Micromamba is pinned because the setup action also includes its binary
+hash in the cache key. To refresh dependencies deliberately, bump
+`cache-environment-key: gate-current-v1` in `linux-gate.yml` (for example, to
+`gate-current-v2`). Changing the pinned Micromamba version or a GitHub cache
+eviction can also require a fresh solve. Package downloads and compiled objects
+are cached separately. The environment cache key has no date, commit SHA, or PR
+number; master builds populate caches that other PRs can restore, while a PR's
+own caches benefit later runs of that PR within GitHub's cache access rules.
 
 After reviewing that result, a maintainer applies the **`ci:full`** label. Create
 this repository label before using the gate:
