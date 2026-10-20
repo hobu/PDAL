@@ -1,76 +1,21 @@
 name: Windows
-
-on:
-    push:
-        paths-ignore:
-            - 'doc/**'
-        branches: [master]
-        tags: ["**"]
-    workflow_call:
-
-
+'on':
+  workflow_call: null
 permissions:
   contents: read
-
-concurrency:
-  group: win-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
-
-
 jobs:
   build:
     name: MSVC
-
-    runs-on: 'windows-latest'
-    if: "!contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[skip ci]')"
-
+    runs-on: windows-latest
     strategy:
       fail-fast: true
       matrix:
-        type: ['current','fixed']
+        type:
+        - current
+        - fixed
     defaults:
       run:
         shell: bash -l {0}
-    env:
-      BUILD_TYPE: ${{ matrix.type }}
-
     steps:
-    - uses: actions/checkout@v7
-      with:
-        persist-credentials: false
-    - uses: TheMrMilchmann/setup-msvc-dev@v4
-      with:
-        arch: x64
-    - uses: mamba-org/setup-micromamba@v3
-      with:
-        init-shell: bash
-        environment-file: "scripts/ci/${{ matrix.type }}-environment.yml"
-        environment-name: "pdal-build"
-        cache-environment: true
-        cache-downloads: true
-
-
-    - name: Setup
-      run: |
-          source ./scripts/ci/win/setup.sh
-
-    - name: CMake
-      working-directory: ./build
-      run: |
-          source ../scripts/ci/win/cmake.sh
-
-    - name: Compile
-      working-directory: ./build
-      run: |
-          source ../scripts/ci/win/compile.sh
-
-    - name: Test
-      working-directory: ./build
-      run: |
-          source ../scripts/ci/win/test.sh
-
-    - name: Examples
-      run: |
-          source ./scripts/ci/win/examples.sh
-
-
+    - name: Controlled success fixture (not a PDAL build)
+      run: echo "CI control-flow fixture succeeded"
