@@ -35,8 +35,8 @@ Fixes #123.
 
 ## What to Expect from CI
 
-Pull requests use two stages of continuous integration (CI) to provide quick
-feedback before running every platform. Pull requests that change only files
+Pull requests from forks use two stages of continuous integration (CI) to provide
+quick feedback before running every platform. Pull requests that change only files
 under `doc/` skip PR CI. Changes outside that directory, including documentation
 elsewhere in the repository, follow the normal CI flow.
 
@@ -72,6 +72,16 @@ The bot also posts a warning listing changed files under `test/` or `tests/`,
 including test data, deleted files, and files renamed out of those directories.
 This warning helps reviewers identify test changes; it does not fail CI. Add or
 update tests as needed and explain the intended behavior in your pull request.
+
+Maintainers who push branches directly to `PDAL/PDAL` get the full CI matrix
+automatically, even before opening a pull request. These builds run in parallel
+without waiting for the ARM64 gate or a `ci:full` label. A pull request from one
+of these branches uses the push checks without starting a duplicate PR build;
+inspect those checks for results rather than waiting for the gated CI success
+comments. Test-change warning comments still apply. Documentation-only pushes
+under `doc/` are skipped, and `dependabot/**` branches continue to use the gated
+PR flow. Ordinary feature-branch pushes to a fork do not start build CI until a
+pull request is opened.
 
 Passing CI is part of review; maintainers still review your changes before
 merging. See the [CI workflow details](.github/CI.md) for more information.

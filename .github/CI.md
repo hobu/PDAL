@@ -1,7 +1,10 @@
 # Pull request CI
 
 PRs that change only files under `doc/` skip PR CI. Other opened, reopened, or
-updated PRs first run a Linux Debug build and tests on `ubuntu-24.04-arm`.
+updated fork PRs first run a Linux Debug build and tests on `ubuntu-24.04-arm`.
+Maintainer branches pushed directly to `PDAL/PDAL` use automatic push CI as
+described below. When testing this change on a fork such as `hobu/PDAL`, PRs from
+that fork's own branches also use the gated flow.
 PRs mixing documentation and other changes follow the normal gating process.
 The gate uses the existing Linux CMake configuration,
 `scripts/ci/current-environment.yml`, and `ccache`.
@@ -66,12 +69,32 @@ paths under `test/` (PDAL's test tree) and `tests/`. Renames out of those direct
 are included. Test data changes count too. If later commits remove those changes,
 the warning is updated. Large lists are truncated with a notice.
 
+## Maintainer branch pushes
+
+Pushes to branches in `PDAL/PDAL` automatically run the ARM64 build and the full
+platform matrix in parallel. No PR, initial-gate result, or `ci:full` label is
+required. The existing platform workflows provide the push checks. Docker uses
+the read-only `Docker CI` workflow for feature branches; publishing remains
+limited to `master` and version tags.
+
+PRs whose source and target repositories are both `PDAL/PDAL` use those push
+checks and skip the gated PR builds, avoiding duplicate runs. They do not receive
+the initial/full-success comments from PR CI; their results are in the push
+checks. Test-file warning comments still run for these PRs. The existing
+`dependabot/**` push exclusion is preserved, so those PRs still use the gated
+flow even when their source branch is in `PDAL/PDAL`.
+
+Documentation-only pushes under `doc/` skip build CI. Feature-branch pushes to
+forks do not start builds independently; their PRs use the gate. Fork `master`
+and tag builds retain their existing triggers. GitHub may show skipped standalone
+workflow runs on fork feature branches, but they allocate no build runners.
+
 ## Permissions and deployment
 
 PR builds use read-only repository permissions and no publishing credentials.
 Docker PR builds never publish images. Existing Docker publishing continues on
-`master` and version tags. Other standalone CI workflows run on `master` and tags;
-feature-branch pushes use PR CI instead of bypassing its gate.
+`master` and version tags. Standalone platform workflows also run on upstream
+maintainer branches as described above.
 
 The comment workflow uses `pull_request_target` for file warnings and
 `workflow_run` for results. It checks out only the repository's default branch,
@@ -81,8 +104,9 @@ comments work, including during fork testing. No personal access token is needed
 Success comments are updated per head SHA, avoiding duplicates on reruns.
 
 The initial check is named `Initial CI / Linux ARM64 current`. Existing branch protection rules
-may need updating after deployment because the platform workflows now run inside
-PR CI. A skipped `Full CI` check is not proof of a full run: GitHub treats skipped
+may need updating after deployment: fork PRs use jobs called from PR CI, while
+upstream maintainer PRs use standalone push checks with different job names.
+A skipped `Full CI` check is not proof of a full run: GitHub treats skipped
 jobs as passing for required checks. This change controls CI scheduling; it does
 not modify repository merge rules.
 
@@ -99,5 +123,9 @@ For live testing, use a PR in `hobu/PDAL` with this change on the fork's default
 branch. Confirm only ARM64 builds initially, inspect the initial-success comment,
 apply `ci:full`, then verify all platforms and the full-success comment. Exercise
 an unrelated label, a new commit, a failed initial build, and changes/renames under
-both test directory spellings. Restore the fork's original default branch after
+both test directory spellings. To validate upstream branch scheduling without
+pushing upstream, use a disposable fixture branch with simulated builds and
+substitute `hobu/PDAL` for the upstream repository checks only in that fixture.
+Confirm automatic push builds, no duplicate same-repository PR builds, and the
+documentation/Dependabot exclusions. Restore the fork's original default branch after
 testing. Only push branches to `hobu`; prepare the upstream PR after validation.
