@@ -17,7 +17,11 @@ concurrency:
 jobs:
   authorize:
     name: Authorize full CI
+    # Upstream branches already have push CI. Dependabot branches still use PR gating.
     if: >-
+      (github.repository != 'PDAL/PDAL' ||
+       github.event.pull_request.head.repo.full_name != github.repository ||
+       startsWith(github.head_ref, 'dependabot/')) &&
       contains(github.event.pull_request.labels.*.name, 'ci:full') &&
       (github.event.action != 'labeled' || github.event.label.name == 'ci:full')
     runs-on: ubuntu-24.04-arm
@@ -84,6 +88,9 @@ jobs:
     needs: authorize
     if: >-
       !cancelled() &&
+      (github.repository != 'PDAL/PDAL' ||
+       github.event.pull_request.head.repo.full_name != github.repository ||
+       startsWith(github.head_ref, 'dependabot/')) &&
       (github.event.action != 'labeled' || needs.authorize.outputs.full == 'true')
     uses: ./.github/workflows/linux-gate.yml
 

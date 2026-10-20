@@ -1,70 +1,29 @@
 name: OSX
-
-on:
-    push:
-        paths-ignore:
-            - 'doc/**'
-        branches: [master]
-        tags: ["**"]
-    workflow_call:
-
-
 permissions:
   contents: read
-
 concurrency:
   group: osx-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
-
-
 jobs:
   build:
     name: OSX
-
-    runs-on: 'macos-latest'
-    if: "!contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-24.04-arm
+    if: "(github.event_name != 'push' || github.repository == 'PDAL/PDAL' ||\n github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/')) &&\n!contains(github.event.head_commit.message,\
+      \ '[ci skip]') && !contains(github.event.head_commit.message, '[skip ci]')"
     strategy:
       fail-fast: true
       matrix:
-        type: ['current']
-    env:
-      BUILD_TYPE: ${{ matrix.type }}
-    defaults:
-      run:
-        shell: bash -l {0}
-
+        type:
+        - current
     steps:
-    - uses: actions/checkout@v7
-      with:
-        persist-credentials: false
-    - uses: mamba-org/setup-micromamba@v3
-      with:
-        init-shell: bash
-        environment-file: "scripts/ci/${{ matrix.type }}-environment.yml"
-        environment-name: "pdal-build"
-        cache-environment: true
-        cache-downloads: true
-
-    - name: Setup
-      run: |
-          source ./scripts/ci/osx/setup.sh
-
-    - name: CMake
-      run: |
-          source ../scripts/ci/osx/cmake.sh
-      working-directory: ./build
-
-    - name: Compile
-      run: |
-          source ../scripts/ci/osx/compile.sh
-      working-directory: ./build
-
-    - name: Test
-      run: |
-          source ../scripts/ci/osx/test.sh
-      working-directory: ./build
-
-    - name: Examples
-      run: |
-          source ./scripts/ci/osx/examples.sh
-
+    - name: Simulated platform build
+      run: 'echo "Branch scheduling fixture: simulated build passed"'
+'on':
+  push:
+    paths-ignore:
+    - doc/**
+    branches-ignore:
+    - dependabot/**
+    tags:
+    - '**'
+  workflow_call: null

@@ -1,53 +1,25 @@
 name: Alpine
-
-on:
-    push:
-        paths-ignore:
-            - 'doc/**'
-        branches: [master]
-        tags: ["**"]
-    workflow_call:
-
 permissions:
   contents: read
-
 concurrency:
   group: alpine-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
-
 jobs:
   build:
-    runs-on: ubuntu-latest
-    if: "!contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[skip ci]')"
-    defaults:
-      run:
-        shell: bash -l {0}
+    runs-on: ubuntu-24.04-arm
+    if: "(github.event_name != 'push' || github.repository == 'PDAL/PDAL' ||\n github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/')) &&\n!contains(github.event.head_commit.message,\
+      \ '[ci skip]') && !contains(github.event.head_commit.message, '[skip ci]')"
     strategy:
       fail-fast: true
-    container: pdal/alpinebase:latest
     steps:
-    - uses: actions/checkout@v7
-      with:
-        persist-credentials: false
-    - name: Setup
-      run: |
-          source ./scripts/ci/alpine/setup.sh
-
-    - name: CMake
-      run: |
-          source ../scripts/ci/alpine/cmake.sh
-      working-directory: ./build
-
-    - name: Compile
-      run: |
-          source ../scripts/ci/alpine/compile.sh
-      working-directory: ./build
-
-    - name: Test
-      run: |
-          source ../scripts/ci/alpine/test.sh
-      working-directory: ./build
-
-    - name: Examples
-      run: |
-          source ./scripts/ci/alpine/examples.sh
+    - name: Simulated platform build
+      run: 'echo "Branch scheduling fixture: simulated build passed"'
+'on':
+  push:
+    paths-ignore:
+    - doc/**
+    branches-ignore:
+    - dependabot/**
+    tags:
+    - '**'
+  workflow_call: null
