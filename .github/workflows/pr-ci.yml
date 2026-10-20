@@ -1,0 +1,72 @@
+name: PR CI
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  # An unrelated label must not cancel an active build.
+  group: pr-ci-${{ github.event.pull_request.number }}-${{ github.event.action == 'labeled' && github.event.label.name != 'ci:full' && github.run_id || 'build' }}
+  cancel-in-progress: true
+
+jobs:
+  initial:
+    name: Initial CI
+    if: github.event.action != 'labeled' || github.event.label.name == 'ci:full'
+    uses: ./.github/workflows/pixi.yml
+
+  linux:
+    needs: initial
+    if: contains(github.event.pull_request.labels.*.name, 'ci:full')
+    uses: ./.github/workflows/linux.yml
+
+  osx:
+    needs: initial
+    if: contains(github.event.pull_request.labels.*.name, 'ci:full')
+    uses: ./.github/workflows/osx.yml
+
+  windows:
+    needs: initial
+    if: contains(github.event.pull_request.labels.*.name, 'ci:full')
+    uses: ./.github/workflows/win.yml
+
+  alpine:
+    needs: initial
+    if: contains(github.event.pull_request.labels.*.name, 'ci:full')
+    uses: ./.github/workflows/alpine.yml
+
+  conda:
+    needs: initial
+    if: contains(github.event.pull_request.labels.*.name, 'ci:full')
+    uses: ./.github/workflows/conda.yml
+
+  docker:
+    needs: initial
+    if: contains(github.event.pull_request.labels.*.name, 'ci:full')
+    uses: ./.github/workflows/docker-pr.yml
+
+  full:
+    name: Full CI
+    needs: [initial, linux, osx, windows, alpine, conda, docker]
+    if: >-
+      always() && !cancelled() &&
+      needs.initial.result == 'success' &&
+      contains(github.event.pull_request.labels.*.name, 'ci:full')
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Require every platform to pass
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          results = json.loads(os.environ["RESULTS"])
+          failed = [name for name, job in results.items() if job["result"] != "success"]
+          if failed:
+              raise SystemExit("Full CI did not pass: " + ", ".join(failed))
+          print("Every CI platform passed.")
+          PY

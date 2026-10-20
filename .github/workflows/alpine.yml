@@ -4,13 +4,15 @@ on:
     push:
         paths-ignore:
             - 'doc/**'
-        branches-ignore: ["dependabot/**"]
-    pull_request:
-        paths-ignore:
-            - 'doc/**'
+        branches: [master]
+        tags: ["**"]
+    workflow_call:
+
+permissions:
+  contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  group: alpine-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -25,6 +27,8 @@ jobs:
     container: pdal/alpinebase:latest
     steps:
     - uses: actions/checkout@v7
+      with:
+        persist-credentials: false
     - name: Setup
       run: |
           source ./scripts/ci/alpine/setup.sh
