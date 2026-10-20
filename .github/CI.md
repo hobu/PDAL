@@ -1,8 +1,21 @@
 # Pull request CI
 
-Every opened, reopened, or updated PR first runs the Pixi build and tests on
-`ubuntu-24.04-arm`, including documentation-only PRs. A successful initial run
-posts an **Initial CI passed** comment with the tested head SHA and run link.
+Every opened, reopened, or updated PR first runs a Linux Debug build and tests on
+`ubuntu-24.04-arm`, including documentation-only PRs. The gate uses the existing
+Linux CMake configuration, `scripts/ci/current-environment.yml`, and `ccache`.
+Its unlocked Conda environment cache refreshes daily. It configures and builds
+once, then invokes CTest directly. Master pushes also run the ARM64 gate to
+populate caches that new PRs can restore. Installation, examples, standalone plugin
+rebuilds, and the second locale test pass remain in the full matrix. A successful
+initial run posts an **Initial CI passed** comment with the tested head SHA and
+run link.
+
+Pixi runs in the full matrix with its `RelWithDebInfo` setup. The workflow invokes
+only its `test` task, which already depends on configure/build, to avoid a second
+compilation. The gate uses the faster Debug configuration and compiler caching
+while retaining the basic Linux build's test coverage.
+Standard ARM64 and x64 GitHub-hosted runners are both free for public repositories;
+the gate uses the standard ARM64 runner, not a paid larger runner.
 
 After reviewing that result, a maintainer applies the **`ci:full`** label. Create
 this repository label before using the gate:
@@ -12,7 +25,7 @@ gh label create ci:full --repo OWNER/PDAL --color 0E8A16 \
   --description "Run all CI platforms after Linux ARM64 passes"
 ```
 
-Adding the label starts a new run, which rechecks ARM64 and then runs Linux
+Adding the label starts a new run, which rechecks ARM64 and then runs Pixi, Linux
 (current/fixed), macOS, Windows (current/fixed), Alpine, Conda (three platforms),
 and Docker (AMD64/ARM64). The **Full CI** job succeeds only when every platform
 succeeds. A second bot comment reports full success. Failures, cancellation,
@@ -44,7 +57,7 @@ GitHub must have this workflow and its script on the **default branch** before
 comments work, including during fork testing. No personal access token is needed.
 Success comments are updated per head SHA, avoiding duplicates on reruns.
 
-The initial check is named `Initial CI / Pixi`. Existing branch protection rules
+The initial check is named `Initial CI / Linux ARM64 current`. Existing branch protection rules
 may need updating after deployment because the platform workflows now run inside
 PR CI. A skipped `Full CI` check is not proof of a full run: GitHub treats skipped
 jobs as passing for required checks. This change controls CI scheduling; it does

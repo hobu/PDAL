@@ -1,14 +1,14 @@
 name: Pixi
-'on':
-  workflow_call: null
 permissions:
   contents: read
 jobs:
   build:
     name: Pixi
     runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
     steps:
-    - name: Controlled validation fixture (not a PDAL build)
-      run: 'sleep 45
-
-        echo "Controlled initial success after delay"'
+    - name: Controlled fixture (not a PDAL build)
+      run: echo "Controlled CI fixture success"
+'on':
+  workflow_call: null

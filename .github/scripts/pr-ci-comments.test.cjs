@@ -62,7 +62,7 @@ function job(name, conclusion = 'success') {
 
 test('initial-only run reports ARM64 success but not a skipped full matrix', async () => {
     const f = fixture();
-    f.state.jobs = [job('Initial CI / Pixi'), job('Full CI', 'skipped')];
+    f.state.jobs = [job('Initial CI / Linux ARM64 current'), job('Full CI', 'skipped')];
     await f.run();
     assert.equal(f.state.comments.length, 1);
     assert.match(f.state.comments[0].body, /Initial CI passed on Linux ARM64/);
@@ -72,7 +72,7 @@ test('initial-only run reports ARM64 success but not a skipped full matrix', asy
 
 test('full success produces two distinct comments and reruns are idempotent', async () => {
     const f = fixture();
-    f.state.jobs = [job('Initial CI / Pixi'), job('Full CI')];
+    f.state.jobs = [job('Initial CI / Linux ARM64 current'), job('Full CI')];
     await f.run();
     await f.run();
     assert.equal(f.state.comments.length, 2);
@@ -89,14 +89,14 @@ for (const conclusion of ['failure', 'cancelled', 'skipped', 'timed_out']) {
     test(`initial ${conclusion} never posts success`, async () => {
         const f = fixture();
         f.state.run.conclusion = conclusion;
-        f.state.jobs = [job('Initial CI / Pixi', conclusion), job('Full CI', 'skipped')];
+        f.state.jobs = [job('Initial CI / Linux ARM64 current', conclusion), job('Full CI', 'skipped')];
         await f.run();
         assert.equal(f.state.comments.length, 0);
     });
     test(`full ${conclusion} only reports the successful initial stage`, async () => {
         const f = fixture();
         f.state.run.conclusion = conclusion;
-        f.state.jobs = [job('Initial CI / Pixi'), job('Full CI', conclusion)];
+        f.state.jobs = [job('Initial CI / Linux ARM64 current'), job('Full CI', conclusion)];
         await f.run();
         assert.equal(f.state.comments.length, 1);
         assert.doesNotMatch(f.state.comments[0].body, /full CI matrix passed/);
@@ -106,7 +106,7 @@ for (const conclusion of ['failure', 'cancelled', 'skipped', 'timed_out']) {
 test('overall failure suppresses full success even if the summary job passed', async () => {
     const f = fixture();
     f.state.run.conclusion = 'failure';
-    f.state.jobs = [job('Initial CI / Pixi'), job('Full CI')];
+    f.state.jobs = [job('Initial CI / Linux ARM64 current'), job('Full CI')];
     await f.run();
     assert.equal(f.state.comments.length, 1);
 });
@@ -114,7 +114,7 @@ test('overall failure suppresses full success even if the summary job passed', a
 test('unrelated label runs, missing jobs, and incomplete jobs do not report success', async () => {
     const f = fixture();
     await f.run();
-    f.state.jobs = [{ ...job('Initial CI / Pixi'), status: 'in_progress' }];
+    f.state.jobs = [{ ...job('Initial CI / Linux ARM64 current'), status: 'in_progress' }];
     await f.run();
     assert.equal(f.state.comments.length, 0);
 });
@@ -122,7 +122,7 @@ test('unrelated label runs, missing jobs, and incomplete jobs do not report succ
 for (const mismatch of ['head', 'base', 'source', 'closed']) {
     test(`ignores ${mismatch} mismatch for workflow run`, async () => {
         const f = fixture();
-        f.state.jobs = [job('Initial CI / Pixi'), job('Full CI')];
+        f.state.jobs = [job('Initial CI / Linux ARM64 current'), job('Full CI')];
         if (mismatch === 'head') f.state.pr.head.sha = 'new-commit';
         if (mismatch === 'base') f.state.pr.base.repo.full_name = 'elsewhere/PDAL';
         if (mismatch === 'source') f.state.pr.head.repo.full_name = 'other/PDAL';
@@ -135,7 +135,7 @@ for (const mismatch of ['head', 'base', 'source', 'closed']) {
 test('fork PR fallback uses commit associations when run has no PR list', async () => {
     const f = fixture();
     f.state.run.pull_requests = [];
-    f.state.jobs = [job('Initial CI / Pixi')];
+    f.state.jobs = [job('Initial CI / Linux ARM64 current')];
     await f.run();
     assert.equal(f.state.comments.length, 1);
     assert.equal(f.state.calls.find(([method]) => method === 'associated')[1].commit_sha, 'abc123');
@@ -143,7 +143,7 @@ test('fork PR fallback uses commit associations when run has no PR list', async 
 
 test('ignores push runs and different workflow paths', async () => {
     const f = fixture();
-    f.state.jobs = [job('Initial CI / Pixi'), job('Full CI')];
+    f.state.jobs = [job('Initial CI / Linux ARM64 current'), job('Full CI')];
     f.state.run.event = 'push';
     await f.run();
     f.state.run.event = 'pull_request';
@@ -189,7 +189,7 @@ test('does not alter comments forged by a contributor', async () => {
         id: 99, body: '<!-- pdal-ci-initial:abc123 -->\nforged',
         user: { login: 'contributor' },
     }];
-    f.state.jobs = [job('Initial CI / Pixi')];
+    f.state.jobs = [job('Initial CI / Linux ARM64 current')];
     await f.run();
     assert.equal(f.state.comments.length, 2);
     assert.match(f.state.comments[0].body, /forged/);
@@ -211,4 +211,14 @@ test('no test changes on a new PR produce no warning', async () => {
     f.state.files = [{ filename: 'src/main.cpp', status: 'modified' }];
     await f.run();
     assert.equal(f.state.comments.length, 0);
+});
+
+test('truncated files list cannot silently clear a possible test warning', async () => {
+    const f = fixture('pull_request_target');
+    f.state.files = Array.from({ length: 3000 }, (_, i) => ({
+        filename: `src/${i}.cpp`, status: 'modified',
+    }));
+    await f.run();
+    assert.match(f.state.comments[0].body, /may be missing/);
+    assert.doesNotMatch(f.state.comments[0].body, /no longer changes/);
 });

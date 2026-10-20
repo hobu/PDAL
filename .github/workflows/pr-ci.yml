@@ -16,6 +16,11 @@ jobs:
   initial:
     name: Initial CI
     if: github.event.action != 'labeled' || github.event.label.name == 'ci:full'
+    uses: ./.github/workflows/linux-gate.yml
+
+  pixi:
+    needs: initial
+    if: contains(github.event.pull_request.labels.*.name, 'ci:full')
     uses: ./.github/workflows/pixi.yml
 
   linux:
@@ -50,7 +55,7 @@ jobs:
 
   full:
     name: Full CI
-    needs: [initial, linux, osx, windows, alpine, conda, docker]
+    needs: [initial, pixi, linux, osx, windows, alpine, conda, docker]
     if: >-
       always() && !cancelled() &&
       needs.initial.result == 'success' &&

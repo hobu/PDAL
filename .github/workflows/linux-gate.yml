@@ -1,0 +1,12 @@
+name: Linux ARM64 gate
+permissions:
+  contents: read
+jobs:
+  build:
+    name: Linux ARM64 current
+    runs-on: ubuntu-24.04-arm
+    steps:
+    - name: Controlled fixture (not a PDAL build)
+      run: echo "Controlled CI fixture success"
+'on':
+  workflow_call: null

@@ -1,21 +1,22 @@
 name: Linux
-'on':
-  workflow_call: null
 permissions:
   contents: read
 jobs:
   build:
     name: Linux ${{ matrix.type }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     strategy:
       fail-fast: false
       matrix:
         type:
         - current
         - fixed
-    defaults:
-      run:
-        shell: bash -l {0}
     steps:
-    - name: Controlled validation fixture (not a PDAL build)
-      run: exit 1
+    - name: Controlled fixture (not a PDAL build)
+      run: 'if [ "$ATTEMPT" = "1" ]; then exit 1; fi
+
+        echo "Controlled retry success"'
+      env:
+        ATTEMPT: ${{ github.run_attempt }}
+'on':
+  workflow_call: null

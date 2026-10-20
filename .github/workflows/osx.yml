@@ -1,20 +1,17 @@
 name: OSX
-'on':
-  workflow_call: null
 permissions:
   contents: read
 jobs:
   build:
     name: OSX
-    runs-on: macos-latest
+    runs-on: ubuntu-24.04-arm
     strategy:
       fail-fast: true
       matrix:
         type:
         - current
-    defaults:
-      run:
-        shell: bash -l {0}
     steps:
-    - name: Controlled success fixture (not a PDAL build)
-      run: echo "CI control-flow fixture succeeded"
+    - name: Controlled fixture (not a PDAL build)
+      run: echo "Controlled CI fixture success"
+'on':
+  workflow_call: null
