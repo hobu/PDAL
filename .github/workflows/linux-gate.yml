@@ -29,8 +29,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Test CI reporting
-        run: node --test .github/scripts/pr-ci-comments.test.cjs
+      - name: Test CI authorization and reporting
+        run: node --test .github/scripts/*.test.cjs
 
       - uses: mamba-org/setup-micromamba@v3
         with:

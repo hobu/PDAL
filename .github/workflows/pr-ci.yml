@@ -15,53 +15,120 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  authorize:
+    name: Authorize full CI
+    if: >-
+      contains(github.event.pull_request.labels.*.name, 'ci:full') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'ci:full')
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      issues: read
+      pull-requests: read
+    outputs:
+      full: ${{ steps.authorize.outputs.result }}
+    steps:
+      # Use only API metadata here; do not check out or execute PR code.
+      - uses: actions/github-script@v8
+        id: authorize
+        with:
+          script: |
+            const label = 'ci:full';
+            const { action, pull_request: requested, label: changedLabel } = context.payload;
+            if (!['opened', 'reopened', 'synchronize', 'labeled'].includes(action) ||
+                (action === 'labeled' && changedLabel?.name !== label)) return false;
+
+            const { data: pr } = await github.rest.pulls.get({
+              ...context.repo, pull_number: requested.number,
+            });
+            if (pr.state !== 'open' || pr.head.sha !== requested.head.sha ||
+                !pr.labels.some(item => item.name === label)) return false;
+
+            // Check the latest application, not an older maintainer approval.
+            // This also prevents an unauthorized label from enabling a later push.
+            const events = await github.paginate(github.rest.issues.listEvents, {
+              ...context.repo, issue_number: pr.number, per_page: 100,
+            });
+            const latest = events
+              .filter(event => ['labeled', 'unlabeled'].includes(event.event) &&
+                event.label?.name === label)
+              .reduce((last, event) => !last || event.id > last.id ? event : last, null);
+            if (latest?.event !== 'labeled' || !latest.actor?.login) {
+              core.notice('Full CI requires a verifiable ci:full label application.');
+              return false;
+            }
+
+            const users = new Set([latest.actor.login]);
+            // A delayed label event or rerun must not borrow another user's approval.
+            if (action === 'labeled') users.add(context.actor);
+            for (const username of users) {
+              let permission;
+              try {
+                const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+                  ...context.repo, username,
+                });
+                permission = data.permission;
+              } catch (error) {
+                if (error.status !== 404) throw error; // API errors fail closed.
+              }
+              // GitHub maps Maintain to write and Triage to read, including custom roles.
+              if (!['write', 'admin'].includes(permission)) {
+                core.notice(`Full CI denied: ${username} needs repository write access. ` +
+                  'A user with write access must remove and reapply ci:full.');
+                return false;
+              }
+            }
+            return true;
+
   initial:
     name: Initial CI
-    if: github.event.action != 'labeled' || github.event.label.name == 'ci:full'
+    needs: authorize
+    if: >-
+      !cancelled() &&
+      (github.event.action != 'labeled' || needs.authorize.outputs.full == 'true')
     uses: ./.github/workflows/linux-gate.yml
 
   pixi:
-    needs: initial
-    if: contains(github.event.pull_request.labels.*.name, 'ci:full')
+    needs: [initial, authorize]
+    if: needs.authorize.outputs.full == 'true'
     uses: ./.github/workflows/pixi.yml
 
   linux:
-    needs: initial
-    if: contains(github.event.pull_request.labels.*.name, 'ci:full')
+    needs: [initial, authorize]
+    if: needs.authorize.outputs.full == 'true'
     uses: ./.github/workflows/linux.yml
 
   osx:
-    needs: initial
-    if: contains(github.event.pull_request.labels.*.name, 'ci:full')
+    needs: [initial, authorize]
+    if: needs.authorize.outputs.full == 'true'
     uses: ./.github/workflows/osx.yml
 
   windows:
-    needs: initial
-    if: contains(github.event.pull_request.labels.*.name, 'ci:full')
+    needs: [initial, authorize]
+    if: needs.authorize.outputs.full == 'true'
     uses: ./.github/workflows/win.yml
 
   alpine:
-    needs: initial
-    if: contains(github.event.pull_request.labels.*.name, 'ci:full')
+    needs: [initial, authorize]
+    if: needs.authorize.outputs.full == 'true'
     uses: ./.github/workflows/alpine.yml
 
   conda:
-    needs: initial
-    if: contains(github.event.pull_request.labels.*.name, 'ci:full')
+    needs: [initial, authorize]
+    if: needs.authorize.outputs.full == 'true'
     uses: ./.github/workflows/conda.yml
 
   docker:
-    needs: initial
-    if: contains(github.event.pull_request.labels.*.name, 'ci:full')
+    needs: [initial, authorize]
+    if: needs.authorize.outputs.full == 'true'
     uses: ./.github/workflows/docker-pr.yml
 
   full:
     name: Full CI
-    needs: [initial, pixi, linux, osx, windows, alpine, conda, docker]
+    needs: [authorize, initial, pixi, linux, osx, windows, alpine, conda, docker]
     if: >-
       always() && !cancelled() &&
       needs.initial.result == 'success' &&
-      contains(github.event.pull_request.labels.*.name, 'ci:full')
+      needs.authorize.outputs.full == 'true'
     runs-on: ubuntu-24.04-arm
     steps:
       - name: Require every platform to pass

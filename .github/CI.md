@@ -31,24 +31,33 @@ are cached separately. The environment cache key has no date, commit SHA, or PR
 number; master builds populate caches that other PRs can restore, while a PR's
 own caches benefit later runs of that PR within GitHub's cache access rules.
 
-After reviewing that result, a maintainer applies the **`ci:full`** label. Create
-this repository label before using the gate:
+After reviewing that result, someone with **Write, Maintain, or Admin** repository
+access applies the **`ci:full`** label. GitHub also lets Triage users apply labels,
+so PR CI explicitly checks repository permissions before allowing the full matrix.
+Create this repository label before using the gate:
 
 ```sh
 gh label create ci:full --repo OWNER/PDAL --color 0E8A16 \
   --description "Run all CI platforms after Linux ARM64 passes"
 ```
 
-Adding the label starts a new run, which rechecks ARM64 and then runs Pixi, Linux
-(current/fixed), macOS, Windows (current/fixed), Alpine, Conda (three platforms),
+An authorized label application starts a new run, which rechecks ARM64 and then
+runs Pixi, Linux (current/fixed), macOS, Windows (current/fixed), Alpine, Conda (three platforms),
 and Docker (AMD64/ARM64). The **Full CI** job succeeds only when every platform
 succeeds. A second bot comment reports full success. Failures, cancellation,
 skipped platforms, and results for an older PR head never produce a full-success
 comment.
 
-The label remains effective for subsequent pushes: each new revision must pass
-ARM64 before its full matrix starts. Remove it to return subsequent runs to the
-initial stage; removing it does not cancel work already started. Labels other
+The label remains effective for subsequent pushes, including contributor pushes:
+each new run verifies who most recently applied it and that they still have write
+access. An older authorized application cannot approve a later unauthorized
+reapplication. A denied label must be removed and reapplied by someone with write
+access. Missing label history or unavailable permission data never authorizes the
+matrix. This check uses read-only API metadata without checking out PR code.
+
+Each new revision must pass ARM64 before its full matrix starts. Remove the label
+to return subsequent runs to the initial stage; removing it does not cancel work
+already started. Labels other
 than `ci:full` do not start builds or interrupt active runs. To retry a failure,
 rerun the workflow in Actions, or remove and reapply `ci:full`.
 
@@ -82,7 +91,7 @@ not modify repository merge rules.
 Run the reporting tests with:
 
 ```sh
-node --test .github/scripts/pr-ci-comments.test.cjs
+node --test .github/scripts/*.test.cjs
 actionlint
 ```
 
