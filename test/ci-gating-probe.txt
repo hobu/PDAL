@@ -1,0 +1,1 @@
+Temporary CI gating validation fixture; never merge.
