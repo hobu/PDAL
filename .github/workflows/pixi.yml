@@ -8,5 +8,7 @@ jobs:
     name: Pixi
     runs-on: ubuntu-24.04-arm
     steps:
-    - name: Controlled success fixture (not a PDAL build)
-      run: echo "CI control-flow fixture succeeded"
+    - name: Controlled validation fixture (not a PDAL build)
+      run: 'sleep 45
+
+        echo "Controlled initial success after delay"'

@@ -17,5 +17,5 @@ jobs:
       run:
         shell: bash -l {0}
     steps:
-    - name: Controlled success fixture (not a PDAL build)
-      run: echo "CI control-flow fixture succeeded"
+    - name: Controlled validation fixture (not a PDAL build)
+      run: exit 1
