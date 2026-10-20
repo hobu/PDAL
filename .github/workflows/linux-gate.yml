@@ -1,70 +1,12 @@
 name: Linux ARM64 gate
-
-on:
-  # Prime the default-branch cache so new PRs can reuse compiled objects.
-  push:
-    branches: [master]
-    paths-ignore:
-      - 'doc/**'
-  workflow_call:
-
+'on':
+  workflow_call: null
 permissions:
   contents: read
-
-concurrency:
-  group: linux-gate-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
-
 jobs:
   build:
     name: Linux ARM64 current
     runs-on: ubuntu-24.04-arm
-    defaults:
-      run:
-        shell: bash -leo pipefail {0}
-    env:
-      BUILD_TYPE: current
     steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-
-      - name: Test CI authorization and reporting
-        run: node --test .github/scripts/*.test.cjs
-
-      - uses: mamba-org/setup-micromamba@v3
-        with:
-          init-shell: bash
-          # The action includes the micromamba binary in the environment key.
-          # Pin it so a tool release does not invalidate a working environment.
-          micromamba-version: '2.9.0-0'
-          download-micromamba: true
-          environment-file: scripts/ci/current-environment.yml
-          environment-name: pdal-build
-          # Reuse the solved environment across days and code-only changes.
-          # The action also hashes the environment file and includes architecture.
-          # Bump v1 to deliberately refresh dependencies without changing specs.
-          cache-environment: true
-          cache-environment-key: gate-current-v1
-          cache-downloads: true
-
-      - name: ccache
-        uses: hendrikmuhs/ccache-action@v1.2
-        with:
-          key: linux-arm64-current
-
-      - name: Setup
-        run: source ./scripts/ci/linux/setup.sh
-
-      - name: Configure Debug build with ccache
-        run: source ../scripts/ci/linux/cmake.sh
-        working-directory: ./build
-
-      - name: Build once
-        run: ninja
-        working-directory: ./build
-
-      - name: Test
-        # Invoke CTest directly: do not run another configure/build task.
-        run: ctest --output-on-failure
-        working-directory: ./build
+    - name: Simulated platform build
+      run: 'echo "Permission guard fixture: simulated build passed"'

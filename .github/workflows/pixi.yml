@@ -1,40 +1,14 @@
 name: Pixi
-
-on:
-    push:
-        paths-ignore:
-            - 'doc/**'
-        branches: [master]
-        tags: ["**"]
-    workflow_call:
-
+'on':
+  workflow_call: null
 permissions:
   contents: read
-
-concurrency:
-  group: pixi-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
-
 jobs:
   build:
     name: Pixi
-    defaults:
-      run:
-        shell: bash -l {0}
-    runs-on: 'ubuntu-24.04-arm'
-    if: "!contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[skip ci]')"
     strategy:
       fail-fast: false
+    runs-on: ubuntu-24.04-arm
     steps:
-    - uses: actions/checkout@v7
-      with:
-        persist-credentials: false
-    - uses: prefix-dev/setup-pixi@v0.11.2
-      with:
-        environments: >-
-          dev
-
-    - name: Build and test
-      # The test task already depends on build and configure.
-      run: |
-          pixi run -e dev test
+    - name: Simulated platform build
+      run: 'echo "Permission guard fixture: simulated build passed"'

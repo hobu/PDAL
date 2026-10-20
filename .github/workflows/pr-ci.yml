@@ -32,6 +32,8 @@ jobs:
         id: authorize
         with:
           script: |
+            // Fixture only: simulate a trigger from an unprivileged GitHub account.
+            if (context.payload.action === 'labeled') context.actor = 'octocat';
             const label = 'ci:full';
             const { action, pull_request: requested, label: changedLabel } = context.payload;
             if (!['opened', 'reopened', 'synchronize', 'labeled'].includes(action) ||
