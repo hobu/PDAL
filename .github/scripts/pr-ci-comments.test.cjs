@@ -212,3 +212,13 @@ test('no test changes on a new PR produce no warning', async () => {
     await f.run();
     assert.equal(f.state.comments.length, 0);
 });
+
+test('truncated files list cannot silently clear a possible test warning', async () => {
+    const f = fixture('pull_request_target');
+    f.state.files = Array.from({ length: 3000 }, (_, i) => ({
+        filename: `src/${i}.cpp`, status: 'modified',
+    }));
+    await f.run();
+    assert.match(f.state.comments[0].body, /may be missing/);
+    assert.doesNotMatch(f.state.comments[0].body, /no longer changes/);
+});

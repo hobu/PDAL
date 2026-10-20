@@ -38,6 +38,13 @@ async function reportTestChanges(github, repo, pr) {
         isTest(file.filename) || isTest(file.previous_filename));
     const marker = '<!-- pdal-test-changes -->';
     if (!changed.length) {
+        if (files.length >= 3000) {
+            await upsertComment(github, repo, pr.number, marker,
+                '⚠️ GitHub returned its maximum of 3,000 changed files. No test paths ' +
+                'were found in that list, but changes under `test/` or `tests/` may ' +
+                'be missing. Please review the complete diff for test changes.');
+            return;
+        }
         // Clear a warning if a later push removes all test changes.
         const comments = await github.paginate(github.rest.issues.listComments, {
             ...repo, issue_number: pr.number, per_page: 100,

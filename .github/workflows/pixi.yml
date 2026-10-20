@@ -34,11 +34,7 @@ jobs:
         environments: >-
           dev
 
-    - name: Build
-      run: |
-          pixi run -e dev build
-
-    - name: Test
+    - name: Build and test
+      # The test task already depends on build and configure.
       run: |
           pixi run -e dev test
-

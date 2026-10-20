@@ -4,14 +4,16 @@ Every opened, reopened, or updated PR first runs a Linux Debug build and tests o
 `ubuntu-24.04-arm`, including documentation-only PRs. The gate uses the existing
 Linux CMake configuration, `scripts/ci/current-environment.yml`, and `ccache`.
 Its unlocked Conda environment cache refreshes daily. It configures and builds
-once, then invokes CTest directly. Installation, examples, standalone plugin
+once, then invokes CTest directly. Master pushes also run the ARM64 gate to
+populate caches that new PRs can restore. Installation, examples, standalone plugin
 rebuilds, and the second locale test pass remain in the full matrix. A successful
 initial run posts an **Initial CI passed** comment with the tested head SHA and
 run link.
 
-Pixi runs in the full matrix. Its current `RelWithDebInfo` setup has no compiler
-cache, and invoking both its `build` and `test` tasks repeats configure/build.
-The gate avoids that work while retaining the basic Linux build's test coverage.
+Pixi runs in the full matrix with its `RelWithDebInfo` setup. The workflow invokes
+only its `test` task, which already depends on configure/build, to avoid a second
+compilation. The gate uses the faster Debug configuration and compiler caching
+while retaining the basic Linux build's test coverage.
 Standard ARM64 and x64 GitHub-hosted runners are both free for public repositories;
 the gate uses the standard ARM64 runner, not a paid larger runner.
 
