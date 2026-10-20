@@ -1,8 +1,10 @@
 # Pull request CI
 
-Every opened, reopened, or updated PR first runs a Linux Debug build and tests on
-`ubuntu-24.04-arm`, including documentation-only PRs. The gate uses the existing
-Linux CMake configuration, `scripts/ci/current-environment.yml`, and `ccache`.
+PRs that change only files under `doc/` skip PR CI. Other opened, reopened, or
+updated PRs first run a Linux Debug build and tests on `ubuntu-24.04-arm`.
+PRs mixing documentation and other changes follow the normal gating process.
+The gate uses the existing Linux CMake configuration,
+`scripts/ci/current-environment.yml`, and `ccache`.
 The complete solved Conda environment is cached with a stable versioned key;
 cache hits skip dependency solving and installation, even on later days. The gate
 prioritizes reusing working dependencies over picking up every package release.
