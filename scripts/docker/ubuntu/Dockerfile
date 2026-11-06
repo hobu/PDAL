@@ -2,6 +2,7 @@
 ARG PYTHON_VERSION="3.13"
 
 FROM condaforge/miniforge3:latest AS build
+ARG PYTHON_VERSION
 LABEL org.opencontainers.image.authors="howard@hobu.co"
 
 ENV LANG=C.UTF-8

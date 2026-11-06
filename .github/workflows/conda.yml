@@ -5,12 +5,14 @@ on:
         paths-ignore:
             - 'doc/**'
         branches-ignore: ["dependabot/**"]
-    pull_request:
-        paths-ignore:
-            - 'doc/**'
+        tags: ["**"]
+    workflow_call:
+
+permissions:
+  contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  group: conda-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -20,7 +22,12 @@ jobs:
       run:
         shell: bash -l {0}
     runs-on: ${{ matrix.platform }}
-    if: "!contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[skip ci]')"
+    # Build upstream branches automatically; fork branches use gated PR CI.
+    if: >-
+      (github.event_name != 'push' || github.repository == 'PDAL/PDAL' ||
+       github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/')) &&
+      !contains(github.event.head_commit.message, '[ci skip]') &&
+      !contains(github.event.head_commit.message, '[skip ci]')
     strategy:
       fail-fast: true
       matrix:
@@ -30,10 +37,16 @@ jobs:
       GHA_CI_PLATFORM: ${{ matrix.platform }}
     steps:
     - uses: actions/checkout@v7
+      with:
+        persist-credentials: false
 
     - name: Support longpaths
       run: git config --system core.longpaths true
       if: matrix.platform == 'windows-latest'
+
+    - name: Get cache date
+      id: get-date
+      run: echo "today=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
 
     - name: Cache Conda Environment
       uses: actions/cache@v6
