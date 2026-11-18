@@ -86,6 +86,20 @@ pull request is opened.
 Passing CI is part of review; maintainers still review your changes before
 merging. See the [CI workflow details](.github/CI.md) for more information.
 
+### Previous CI Flow
+
+Previously, pull requests and branch pushes started the full matrix immediately.
+
+![Previous PDAL CI flow: pull requests and branch pushes start all platforms in parallel, with results in GitHub checks.](doc/images/ci-flow-old.png)
+
+### New CI Flow
+
+Fork pull requests now pass an initial gate and receive maintainer approval
+before running the full matrix. Maintainer branches pushed directly to
+`PDAL/PDAL` continue to run full CI automatically.
+
+![New PDAL CI flow: fork PRs run the ARM64 gate, await ci:full approval, then run the full matrix; maintainer branch pushes run all jobs automatically.](doc/images/ci-flow-new.png)
+
 ## Additional Resources
 
 * [PDAL's coding conventions](https://pdal.org/project/conventions.html)
