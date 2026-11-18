@@ -2,6 +2,9 @@
 
 # Testing
 
+For the initial ARM64 check, full platform matrix, and test-change warning
+comments on pull requests, see {ref}`integration`.
+
 ## Unit Tests
 
 A unit test framework is provided, with the goal that all (nontrivial) classes
