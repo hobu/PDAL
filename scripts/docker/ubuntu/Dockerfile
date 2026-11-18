@@ -19,6 +19,7 @@ RUN mamba install -y \
     git compilers cmake ninja make \
     conda-pack \
     python=${PYTHON_VERSION} pip numpy scikit-build-core uv pybind11 \
+    libpython \
     && \
     mamba install -y libpdal --only-deps
 
